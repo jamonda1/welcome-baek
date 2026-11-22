@@ -1,0 +1,9 @@
+{
+    "manifest_version": 3,
+    "name": "Welcome Baek",
+    "version": "0.1.0",
+    "description": "Better coding experience for Baekjoon",
+    "action": {
+        "default_popup": "popup.html"
+    }
+}
