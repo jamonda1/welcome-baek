@@ -5,5 +5,12 @@
     "description": "Better coding experience for Baekjoon",
     "action": {
         "default_popup": "popup.html"
-    }
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://www.acmicpc.net/problem/*", "https://acmicpc.net/problem/*"],
+            "js": ["problem.js"],
+            "run_at": "document_idle"
+        }
+    ]
 }
