@@ -1,0 +1,24 @@
+{
+  "name": "welcome-baeck",
+  "version": "1.0.0",
+  "description": "**Better Coding Experience for Baekjoon**",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jamonda1/welcome-baeck.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jamonda1/welcome-baeck/issues"
+  },
+  "homepage": "https://github.com/jamonda1/welcome-baeck#readme",
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}
