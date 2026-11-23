@@ -183,3 +183,26 @@
 #welcome-baek-swap:active {
   background-color: #e2e8f0;
 }
+
+/* ========================================
+   CodeMirror 에디터 영역
+======================================== */
+
+#welcome-baek-editor {
+  width: 100%;
+  height: 65vh;
+  margin-top: 16px;
+  border: 1px solid #dbe2ea;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+#welcome-baek-editor .cm-editor {
+  height: 100%;
+  font-size: 14px;
+}
+
+#welcome-baek-editor .cm-scroller {
+  overflow: auto;
+}

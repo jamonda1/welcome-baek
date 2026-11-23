@@ -1,4 +1,6 @@
 
+import { createEditor } from '../editor/editor';
+
 const main = document.querySelector<HTMLElement>(
   '.container.content'
 );
@@ -18,10 +20,11 @@ if (main && !document.querySelector('#welcome-baek-layout')) {
   const title = document.createElement('h2');
   title.textContent = 'Welcome Baek';
 
-  const description = document.createElement('p');
-  description.textContent = '코드 에디터 영역';
+  // CodeMirror 에디터 컨테이너
+  const editorContainer = document.createElement('div');
+  editorContainer.id = 'welcome-baek-editor';
 
-  panel.append(title, description);
+  panel.append(title, editorContainer);
 
   // 중앙 구분선
   const divider = document.createElement('div');
@@ -38,7 +41,7 @@ if (main && !document.querySelector('#welcome-baek-layout')) {
   swapButton.title = '백준과 Welcome Baek 위치 바꾸기';
   swapButton.setAttribute('aria-label', swapButton.title);
 
-  // 버튼을 클릭할 때 드래그가 시작되지 않도록 처리
+  // 버튼 클릭 시 드래그 시작 방지
   swapButton.addEventListener('pointerdown', (event) => {
     event.stopPropagation();
   });
@@ -48,6 +51,7 @@ if (main && !document.querySelector('#welcome-baek-layout')) {
   dividerHandle.id = 'welcome-baek-divider-handle';
   dividerHandle.setAttribute('aria-hidden', 'true');
 
+  // 점 6개 (2열 × 3행)
   for (let i = 0; i < 6; i++) {
     const dot = document.createElement('span');
     dot.className = 'welcome-baek-divider-dot';
@@ -61,7 +65,7 @@ if (main && !document.querySelector('#welcome-baek-layout')) {
   let reversed = false;
   let dragging = false;
 
-  // 화면 비율 적용
+  // 화면 비율 갱신
   const updateLayout = () => {
     main.style.flexGrow = String(problemRatio);
     panel.style.flexGrow = String(100 - problemRatio);
@@ -111,7 +115,7 @@ if (main && !document.querySelector('#welcome-baek-layout')) {
       Math.min(80, (offset / usableWidth) * 100)
     );
 
-    // 반전 상태에서도 백준의 너비를 올바르게 계산
+    // 좌우 반전 상태에서도 백준 영역 비율 유지
     problemRatio = reversed
       ? 100 - leftRatio
       : leftRatio;
@@ -133,4 +137,7 @@ if (main && !document.querySelector('#welcome-baek-layout')) {
   main.before(layout);
   updateOrder();
   updateLayout();
+
+  // CodeMirror 에디터 생성
+  createEditor(editorContainer);
 }
