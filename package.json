@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsc --noEmit && node scripts/build.mjs",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "preview:ui": "node scripts/preview.mjs"
   },
   "repository": {
     "type": "git",

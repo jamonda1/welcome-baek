@@ -27,6 +27,27 @@ describe('CodeMirror 5 page bridge', () => {
     Reflect.deleteProperty(document.querySelector('.CodeMirror')!, 'CodeMirror');
     expect(applyPrefill(request())).toBe('not-ready');
   });
+  it('waits for an incomplete editor API instead of throwing', () => {
+    submissionForm();
+    Reflect.set(document.querySelector('.CodeMirror')!, 'CodeMirror', { save() {} });
+    expect(applyPrefill(request())).toBe('not-ready');
+  });
+  it.each(['language', 'disabled-source', 'readonly-source'])('leaves a restricted %s form untouched', restriction => {
+    const { editor, language, source } = submissionForm();
+    if (restriction === 'language') language.disabled = true;
+    if (restriction === 'disabled-source') source.disabled = true;
+    if (restriction === 'readonly-source') source.readOnly = true;
+    expect(applyPrefill(request())).toBe('failed');
+    expect(editor.setValue).not.toHaveBeenCalled();
+    expect(language.value).toBe('93');
+  });
+  it('protects a textarea draft while its editor is still empty', () => {
+    const { source, editor } = submissionForm();
+    source.value = 'not yet loaded into the editor';
+    expect(applyPrefill(request())).toBe('occupied');
+    expect(source.value).toBe('not yet loaded into the editor');
+    expect(editor.setValue).not.toHaveBeenCalled();
+  });
   it('does not choose a different language when the desired option is unavailable', () => {
     const { language, editor } = submissionForm();
     language.querySelector('[value="28"]')!.remove();

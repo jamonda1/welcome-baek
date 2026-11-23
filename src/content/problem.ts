@@ -28,6 +28,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   let compactSaved = false;
   let statusTimer: ReturnType<typeof setTimeout> | undefined;
   let preparingSubmission = false;
+  let submissionNoticeTimer: ReturnType<typeof setTimeout> | undefined;
   // ========================================
   // 전체 분할 레이아웃
   // ========================================
@@ -36,6 +37,8 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   layout.id = 'welcome-baek-layout';
 
   main.classList.add('welcome-baek-problem');
+  main.tabIndex = 0;
+  main.setAttribute('aria-label', '백준 문제');
 
   // ========================================
   // Welcome Baek 패널
@@ -43,12 +46,15 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
 
   const panel = document.createElement('aside');
   panel.id = 'welcome-baek-panel';
+  panel.dataset.theme = 'github-light';
+  panel.setAttribute('aria-label', 'Welcome Baek 코드 편집기');
 
   const editorHeader = document.createElement('div');
   editorHeader.id = 'welcome-baek-header';
 
   const title = document.createElement('h2');
   title.textContent = 'Welcome Baek';
+  title.className = 'welcome-baek-sr-only';
 
   // 상단 선택 메뉴 컨테이너
   const controls = document.createElement('div');
@@ -114,7 +120,8 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   submitButton.type = 'button';
   submitButton.textContent = '제출 페이지로 이동';
   submitButton.title = '현재 코드를 새 탭의 백준 제출 화면으로 가져오기';
-  controls.append(submitButton);
+  const editorFooter = document.createElement('div');
+  editorFooter.id = 'welcome-baek-footer';
   const submitStatus = document.createElement('div');
   submitStatus.id = 'welcome-baek-submit-status';
   submitStatus.setAttribute('role', 'status');
@@ -124,7 +131,8 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   saveInfo.id = 'welcome-baek-save-info';
   const saveHint = document.createElement('span');
   saveHint.id = 'welcome-baek-save-hint';
-  saveHint.textContent = '자동 저장 · 에디터에서 Ctrl+S / ⌘+S로 즉시 저장';
+  saveHint.textContent = 'Ctrl+S / ⌘+S';
+  saveHint.title = '마지막 입력 0.5초 후 자동 저장 · 에디터에서 Ctrl+S / ⌘+S로 즉시 저장';
   const retryButton = document.createElement('button');
   retryButton.type = 'button';
   retryButton.id = 'welcome-baek-retry';
@@ -135,8 +143,10 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
   status.setAttribute('aria-atomic', 'true');
-  saveInfo.append(saveHint, status, retryButton);
-  editorHeader.append(title, controls, saveInfo);
+  status.title = '마지막 입력 0.5초 후 자동 저장 · Ctrl+S / ⌘+S로 즉시 저장';
+  saveInfo.append(status, retryButton, saveHint);
+  editorHeader.append(title, controls);
+  editorFooter.append(saveInfo, submitButton);
 
   // ========================================
   // CodeMirror 에디터 영역
@@ -145,17 +155,25 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   const editorContainer = document.createElement('div');
   editorContainer.id = 'welcome-baek-editor';
 
-  panel.append(editorHeader, submitStatus, editorContainer);
+  panel.append(editorHeader, editorContainer, submitStatus, editorFooter);
 
   // ========================================
   // 중앙 구분선
   // ========================================
 
+  // Keep the button outside the separator so both controls remain accessible.
+  const dividerControls = document.createElement('div');
+  dividerControls.id = 'welcome-baek-divider-controls';
   const divider = document.createElement('div');
   divider.id = 'welcome-baek-divider';
 
   divider.setAttribute('role', 'separator');
   divider.setAttribute('aria-orientation', 'vertical');
+  divider.tabIndex = -1;
+  divider.setAttribute('aria-valuemin', '20');
+  divider.setAttribute('aria-valuemax', '80');
+  divider.setAttribute('aria-controls', 'welcome-baek-panel');
+  divider.title = '드래그 또는 방향키로 화면 비율 조절';
   divider.setAttribute(
     'aria-label',
     '화면 분할 비율 조절'
@@ -187,7 +205,8 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     dividerHandle.appendChild(dot);
   }
 
-  divider.append(swapButton, dividerHandle);
+  divider.append(dividerHandle);
+  dividerControls.append(divider, swapButton);
 
   // ========================================
   // 레이아웃 상태
@@ -196,18 +215,23 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   let problemRatio = 50;
   let reversed = false;
   let dragging = false;
+  let dragPointer: number | undefined;
+  let previousUserSelect = '';
 
   const updateLayout = () => {
     main.style.flexGrow = String(problemRatio);
     panel.style.flexGrow = String(100 - problemRatio);
+    // Border-box bases keep the saved ratio accurate despite different pane padding.
+    main.style.flexBasis = `calc((100% - 12px) * ${problemRatio / 100})`;
+    panel.style.flexBasis = `calc((100% - 12px) * ${(100 - problemRatio) / 100})`;
+    divider.setAttribute('aria-valuenow', String(Math.round(problemRatio)));
+    divider.setAttribute('aria-valuetext', `문제 ${Math.round(problemRatio)}%, 코드 ${Math.round(100 - problemRatio)}%`);
   };
 
   const updateOrder = () => {
-    if (reversed) {
-      layout.append(panel, divider, main);
-    } else {
-      layout.append(main, divider, panel);
-    }
+    // Keep DOM nodes in place: moving a focused CodeMirror detaches its selection.
+    layout.dataset.reversed = String(reversed);
+    swapButton.setAttribute('aria-pressed', String(reversed));
   };
 
   // ========================================
@@ -228,11 +252,12 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   // ========================================
 
   divider.addEventListener('pointerdown', (event) => {
-    if (!initialized || event.button !== 0) return;
-
+    if (!initialized || dragging || event.button !== 0) return;
+    try { divider.setPointerCapture(event.pointerId); } catch { return; }
+    event.preventDefault();
     dragging = true;
-    divider.setPointerCapture(event.pointerId);
-
+    dragPointer = event.pointerId;
+    previousUserSelect = document.body.style.userSelect;
     document.body.style.userSelect = 'none';
   });
 
@@ -241,7 +266,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   // ========================================
 
   divider.addEventListener('pointermove', (event) => {
-    if (!dragging) return;
+    if (!dragging || event.pointerId !== dragPointer) return;
 
     const rect = layout.getBoundingClientRect();
     const usableWidth =
@@ -275,22 +300,47 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   // ========================================
 
   const stopDragging = () => {
+    if (!dragging) return;
     dragging = false;
-    document.body.style.userSelect = '';
+    dragPointer = undefined;
+    document.body.style.userSelect = previousUserSelect;
     void preferences.get('problemRatio')?.flush();
   };
 
   divider.addEventListener('pointerup', stopDragging);
   divider.addEventListener('pointercancel', stopDragging);
   divider.addEventListener('lostpointercapture', stopDragging);
+  window.addEventListener('blur', stopDragging);
+  divider.addEventListener('keydown', event => {
+    if (!initialized) return;
+    const step = event.shiftKey ? 10 : 2;
+    if (event.key === 'ArrowLeft') problemRatio += reversed ? step : -step;
+    else if (event.key === 'ArrowRight') problemRatio += reversed ? -step : step;
+    else if (event.key === 'Home') problemRatio = 20;
+    else if (event.key === 'End') problemRatio = 80;
+    else return;
+    event.preventDefault();
+    problemRatio = Math.max(20, Math.min(80, problemRatio));
+    updateLayout();
+    setPreference('problemRatio', problemRatio);
+  });
 
   // ========================================
   // 레이아웃 삽입
   // ========================================
 
   main.before(layout);
+  layout.append(main, dividerControls, panel);
   updateOrder();
   updateLayout();
+  const fitWorkspace = () => {
+    const offset = `${Math.max(0, Math.round(layout.getBoundingClientRect().top))}px`;
+    if (layout.style.getPropertyValue('--wb-top') !== offset) layout.style.setProperty('--wb-top', offset);
+  };
+  fitWorkspace();
+  window.addEventListener('resize', fitWorkspace);
+  const siteHeader = document.querySelector('.header');
+  if (siteHeader && typeof ResizeObserver !== 'undefined') new ResizeObserver(fitWorkspace).observe(siteHeader);
 
   // ========================================
   // CodeMirror 생성 및 이벤트 연결
@@ -335,7 +385,11 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     languageSelect.disabled = !initialized;
     themeSelect.disabled = !initialized;
     swapButton.disabled = !initialized;
-    submitButton.disabled = loading || !initialized || preparingSubmission;
+    divider.tabIndex = initialized ? 0 : -1;
+    divider.setAttribute('aria-disabled', String(!initialized));
+    submitButton.disabled = loading || !initialized || preparingSubmission || !editor.view.state.doc.toString().trim();
+    submitButton.title = !editor.view.state.doc.toString().trim()
+      ? '코드를 작성하면 제출 페이지로 이동할 수 있습니다' : '현재 코드를 새 탭의 백준 제출 화면으로 가져오기';
     editorContainer.setAttribute('aria-busy', String(loading));
   }
 
@@ -384,6 +438,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
       languageSelect.value = settings.language;
       themeSelect.value = settings.theme;
       editor.setTheme(settings.theme);
+      panel.dataset.theme = settings.theme;
       updateOrder();
       updateLayout();
       initialized = true;
@@ -405,6 +460,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   themeSelect.addEventListener('change', () => {
     const theme = themeSelect.value as EditorTheme;
     editor.setTheme(theme);
+    panel.dataset.theme = theme;
     setPreference('theme', theme);
   });
 
@@ -422,6 +478,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
       problemId, language: currentLanguage, code: editor.view.state.doc.toString(), createdAt: Date.now()
     };
     preparingSubmission = true;
+    clearTimeout(submissionNoticeTimer);
     submitStatus.hidden = false;
     submitStatus.dataset.state = 'loading';
     submitStatus.textContent = '제출할 코드를 준비하는 중…';
@@ -430,6 +487,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     void openSubmission(snapshot, () => draft.flush(true)).then(() => {
       submitStatus.dataset.state = 'success';
       submitStatus.textContent = '제출 화면을 열었습니다. 새 탭에서 언어와 코드를 확인해 주세요.';
+      submissionNoticeTimer = setTimeout(() => { submitStatus.hidden = true; }, 4000);
     }).catch((error: unknown) => {
       submitStatus.dataset.state = 'error';
       submitStatus.textContent = error instanceof Error && !/quota|context invalidated/i.test(error.message)

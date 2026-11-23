@@ -53,8 +53,8 @@ export async function readTransfer(token: string, problemId: string): Promise<Su
 
 /** Called directly in the click handler so the browser can open a tab before any awaits. */
 export async function openSubmission(snapshot: SubmissionSnapshot, saveDraft: () => Promise<boolean>): Promise<void> {
-  if (!snapshot.code.trim()) throw new Error('코드를 작성한 뒤 제출 페이지를 열어 주세요');
   if (!isSnapshot(snapshot)) throw new Error('잘못된 문제 또는 언어입니다');
+  if (!snapshot.code.trim()) throw new Error('코드를 작성한 뒤 제출 페이지를 열어 주세요');
   const destination = new URL(`/submit/${snapshot.problemId}`, location.origin);
   if (!/^https:\/\/(www\.)?acmicpc\.net$/.test(destination.origin)) throw new Error('백준 문제 페이지에서 사용해 주세요');
   const token = crypto.randomUUID();

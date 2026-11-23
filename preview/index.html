@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Welcome Baek · UI 미리보기</title>
+  <link rel="stylesheet" href="/layout.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.7 "Segoe UI", "Malgun Gothic", sans-serif; color: #263245; background: #fff; }
+    .header { height: 88px; display: flex; align-items: center; gap: 30px; padding: 0 30px; border-bottom: 1px solid #e1e4e8; }
+    .header strong { font-size: 23px; font-weight: 500; letter-spacing: 3px; color: #33445d; }
+    .header nav { display: flex; gap: 24px; color: #6b7280; font-size: 13px; }
+    .preview-label { margin-left: auto; padding: 2px 9px; color: #69758a; border: 1px solid #e1e4e8; border-radius: 4px; font-size: 11px; }
+    .problem-menu { display: flex; flex-wrap: wrap; gap: 24px; padding: 0 0 16px; margin-bottom: 24px; border-bottom: 1px solid #edf0f5; color: #7b8495; font-size: 12px; }
+    .problem-menu strong { color: #2563eb; font-weight: 600; }
+    h1 { margin: 0 0 20px; font-size: 25px; font-weight: 600; letter-spacing: -.8px; }
+    h1 span { display: inline-block; vertical-align: middle; margin-left: 8px; padding: 2px 7px; border: 1px solid #d8eade; color: #23834b; border-radius: 4px; font-size: 11px; letter-spacing: 0; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 24px; text-align: center; font-size: 12px; }
+    th { font-weight: 500; color: #748094; background: #f8f9fb; }
+    th, td { padding: 9px 5px; border-block: 1px solid #e9ecf1; }
+    h2 { margin: 28px 0 14px; font-size: 19px; font-weight: 600; }
+    p { margin: 0 0 20px; }
+    pre { margin: 10px 0 20px; padding: 13px 16px; border: 1px solid #e1e4e8; border-radius: 5px; background: #f8f9fb; color: #334155; font-size: 13px; }
+    .example-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .example-grid h2 { font-size: 16px; }
+    .footnote { margin-top: 28px; padding-top: 15px; border-top: 1px solid #edf0f5; color: #7b8495; font-size: 11px; }
+    @media (max-width:760px) { .header { height:64px; padding:0 16px; gap:12px; } .header nav { display:none; } .header strong { font-size:18px; } }
+  </style>
+</head>
+<body>
+  <header class="header"><strong>BAEKJOON</strong><nav><span>문제</span><span>문제집</span><span>채점 현황</span><span>게시판</span></nav><span class="preview-label">로컬 UI 미리보기</span></header>
+  <main class="container content">
+    <nav class="problem-menu"><strong>1000번</strong><span>제출</span><span>맞힌 사람</span><span>내 제출</span><span>질문 게시판</span></nav>
+    <h1>A+B <span>성공</span></h1>
+    <table><thead><tr><th>시간 제한</th><th>메모리 제한</th><th>문제 번호</th></tr></thead><tbody><tr><td>2초</td><td>128 MB</td><td>1000</td></tr></tbody></table>
+    <h2>문제</h2><p>두 정수 A와 B를 입력받은 다음, A+B를 출력하는 프로그램을 작성하시오.</p>
+    <h2>입력</h2><p>첫째 줄에 A와 B가 주어진다. (0 &lt; A, B &lt; 10)</p>
+    <h2>출력</h2><p>첫째 줄에 A+B를 출력한다.</p>
+    <div class="example-grid"><section><h2>예제 입력 1</h2><pre>1 2</pre></section><section><h2>예제 출력 1</h2><pre>3</pre></section></div>
+    <h2>힌트</h2><p>언어와 테마를 바꾸거나 구분선을 움직여 새로운 편집 화면을 확인할 수 있습니다.</p>
+    <p class="footnote">백준 1000번 설명을 사용한 로컬 화면 검증용 페이지입니다. 저장소는 이 미리보기 전용이며 실제 백준 제출은 수행하지 않습니다.</p>
+  </main>
+  <script>
+    const query = new URLSearchParams(location.search);
+    const key = 'welcome-baek-ui-preview';
+    const seed = {
+      'welcome-baek:v1:preference:language': 'java',
+      'welcome-baek:v1:preference:theme': 'github-light',
+      'welcome-baek:v1:code:1000:java': { code: 'import java.io.BufferedReader;\nimport java.io.InputStreamReader;\nimport java.util.StringTokenizer;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        BufferedReader br = new BufferedReader(\n            new InputStreamReader(System.in)\n        );\n        StringTokenizer st = new StringTokenizer(br.readLine());\n\n        int a = Integer.parseInt(st.nextToken());\n        int b = Integer.parseInt(st.nextToken());\n\n        System.out.println(a + b);\n    }\n}', updatedAt: Date.now() }
+    };
+    const records = JSON.parse(localStorage.getItem(key) || 'null') || seed;
+    if (['github-light','one-dark','dracula'].includes(query.get('theme'))) records['welcome-baek:v1:preference:theme'] = query.get('theme');
+    if (query.has('ratio')) records['welcome-baek:v1:preference:problemRatio'] = Number(query.get('ratio'));
+    window.chrome = window.chrome || {};
+    chrome.storage = { local: {
+      get: async keys => { if (query.get('fail') === 'read') throw new Error('미리보기용 읽기 실패'); return structuredClone(keys === null ? records : Object.fromEntries(keys.filter(key => key in records).map(key => [key, records[key]]))); },
+      set: async values => { if (query.get('fail') === 'save') throw new Error('QUOTA_BYTES exceeded'); Object.assign(records, structuredClone(values)); localStorage.setItem(key, JSON.stringify(records)); },
+      remove: async keys => { for (const name of Array.isArray(keys) ? keys : [keys]) delete records[name]; localStorage.setItem(key, JSON.stringify(records)); }
+    } };
+  </script>
+  <script src="/problem.js"></script>
+</body>
+</html>

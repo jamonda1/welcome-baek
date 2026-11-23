@@ -46,10 +46,12 @@ describe('problem page integration', () => {
     expect(view().state.doc.toString()).toBe('saved Java');
     expect(document.querySelector<HTMLSelectElement>('#welcome-baek-theme')!.value).toBe('dracula');
     expect(document.querySelector<HTMLElement>('.welcome-baek-problem')!.style.flexGrow).toBe('37');
-    expect(document.querySelector('#welcome-baek-layout')!.firstElementChild!.id).toBe('welcome-baek-panel');
+    expect(document.querySelector<HTMLElement>('#welcome-baek-layout')!.dataset.reversed).toBe('true');
+    expect(document.querySelector<HTMLElement>('#welcome-baek-panel')!.dataset.theme).toBe('dracula');
     expect(set).not.toHaveBeenCalled();
     expect(document.querySelector('#welcome-baek-save')).toBeNull();
-    expect(document.querySelector('#welcome-baek-header #welcome-baek-save-status')).not.toBeNull();
+    expect(document.querySelector('#welcome-baek-footer #welcome-baek-save-status')).not.toBeNull();
+    expect(document.querySelector('#welcome-baek-footer #welcome-baek-submit')).not.toBeNull();
     expect(document.querySelector('#welcome-baek-save-hint')!.textContent).toContain('Ctrl+S');
   });
   it('ignores a stale slow language response while immediately saving outgoing code', async () => {
@@ -135,7 +137,7 @@ describe('problem page integration', () => {
     Object.assign(down, { button: 0, pointerId: 1 });
     divider.dispatchEvent(down);
     const move = new Event('pointermove');
-    Object.assign(move, { clientX: 302 });
+    Object.assign(move, { clientX: 302, pointerId: 1 });
     divider.dispatchEvent(move);
     divider.dispatchEvent(new Event('pointerup'));
     await ticks();
@@ -150,8 +152,9 @@ describe('problem page integration', () => {
     await ticks();
     expect(view().state.doc.toString()).toBe('retain pending late C++');
     expect(data[preferenceKey('theme')]).toBe('one-dark');
+    expect(document.querySelector<HTMLElement>('#welcome-baek-panel')!.dataset.theme).toBe('one-dark');
     expect(data[preferenceKey('reversed')]).toBe(false);
-    expect(document.querySelector('#welcome-baek-layout')!.firstElementChild!.classList.contains('welcome-baek-problem')).toBe(true);
+    expect(document.querySelector<HTMLElement>('#welcome-baek-layout')!.dataset.reversed).toBe('false');
   });
   it('captures the clicked problem/language/code even if the user edits during preparation', async () => {
     const tab = { closed: false, close: vi.fn(), location: { replace: vi.fn() } };
@@ -166,5 +169,57 @@ describe('problem page integration', () => {
     expect(data[`welcome-baek:v1:transfer:${token}`]).toMatchObject({ problemId: '1000', language: 'cpp', code: clickedCode });
     expect(destination.pathname).toBe('/submit/1000');
     open.mockRestore();
+  });
+  it('preserves editor nodes and caret when swapping sides', () => {
+    const layout = document.querySelector('#welcome-baek-layout')!;
+    const children = Array.from(layout.children);
+    const content = view().contentDOM;
+    view().focus();
+    view().dispatch({ selection: { anchor: 3 } });
+    document.querySelector<HTMLButtonElement>('#welcome-baek-swap')!.click();
+    expect(Array.from(layout.children)).toEqual(children);
+    expect(view().contentDOM).toBe(content);
+    expect(view().state.selection.main.anchor).toBe(3);
+  });
+  it('supports keyboard resizing, reversed arrows, limits and persistence', async () => {
+    const divider = document.querySelector<HTMLElement>('#welcome-baek-divider')!;
+    const key = (key: string) => divider.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    expect(divider.tabIndex).toBe(0);
+    key('End');
+    expect(divider.getAttribute('aria-valuenow')).toBe('80');
+    // The preceding swap puts the problem on the right; ArrowRight narrows it.
+    key('ArrowRight');
+    expect(divider.getAttribute('aria-valuenow')).toBe('78');
+    key('Home');
+    key('ArrowRight');
+    expect(divider.getAttribute('aria-valuenow')).toBe('20');
+    window.dispatchEvent(new Event('pagehide'));
+    await ticks();
+    expect(data[preferenceKey('problemRatio')]).toBe(20);
+  });
+  it('ignores a second pointer and restores selection style after a cancelled drag', () => {
+    const divider = document.querySelector<HTMLElement>('#welcome-baek-divider')!;
+    const ratio = divider.getAttribute('aria-valuenow');
+    document.body.style.userSelect = 'text';
+    const down = new Event('pointerdown', { cancelable: true });
+    Object.assign(down, { button: 0, pointerId: 7 });
+    divider.dispatchEvent(down);
+    expect(document.body.style.userSelect).toBe('none');
+    const other = new Event('pointermove');
+    Object.assign(other, { clientX: 650, pointerId: 8 });
+    divider.dispatchEvent(other);
+    expect(divider.getAttribute('aria-valuenow')).toBe(ratio);
+    window.dispatchEvent(new Event('blur'));
+    expect(document.body.style.userSelect).toBe('text');
+    document.body.style.userSelect = '';
+  });
+  it('disables handoff while the current document is empty', async () => {
+    const original = view().state.doc.toString();
+    view().dispatch({ changes: { from: 0, to: view().state.doc.length, insert: '' } });
+    expect(document.querySelector<HTMLButtonElement>('#welcome-baek-submit')!.disabled).toBe(true);
+    view().dispatch({ changes: { from: 0, insert: original } });
+    expect(document.querySelector<HTMLButtonElement>('#welcome-baek-submit')!.disabled).toBe(false);
+    saveShortcut();
+    await ticks();
   });
 });

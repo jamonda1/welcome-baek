@@ -13,10 +13,13 @@ export function applyPrefill(request: PrefillRequest): PrefillStatus {
   const language = document.querySelector<HTMLSelectElement>('#language');
   const source = document.querySelector<HTMLTextAreaElement>('textarea#source');
   const editor = document.querySelector<EditorElement>('.CodeMirror')?.CodeMirror;
-  if (!language || !source || !editor || typeof editor.save !== 'function') return 'not-ready';
+  if (!language || !source || !editor || typeof editor.getValue !== 'function' ||
+    typeof editor.setValue !== 'function' || typeof editor.save !== 'function') return 'not-ready';
+  if (language.disabled || source.disabled || source.readOnly) return 'failed';
   if (!Array.from(language.options).some(option => option.value === request.languageId && !option.disabled)) return 'language-unavailable';
   const previousCode = editor.getValue();
-  if (!request.replaceExisting && previousCode.length && previousCode !== request.code) return 'occupied';
+  if (!request.replaceExisting && ((previousCode.length && previousCode !== request.code) ||
+    (source.value.length && source.value !== request.code))) return 'occupied';
   const previousLanguage = language.value;
   try {
     language.value = request.languageId;

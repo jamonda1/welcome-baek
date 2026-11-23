@@ -151,14 +151,17 @@ Welcome Baek은 백준 온라인 저지(BOJ)의 문제 풀이 환경을 개선�
 
 ## 6. 현재 개발 상태
 
-**Version:** 0.2.0
+**Version:** 0.3.0
 
-**Current Phase:** Phase 5 — 제출 화면 자동 입력 구현·자동 검사 완료, Chrome 실기 확인 대기
+**Current Phase:** 편집 화면 디자인 정리·핵심 동작 안정화 — 로컬 브라우저 검증 완료
 
 Phase 4의 저장 UI는 사용자 확인을 마쳤습니다. 현재 코드를 새 탭의 백준 제출 화면으로 전달하는 기능을 추가했습니다.
 `npm run typecheck`, `npm run build`, `npm test`로 검증합니다. 자동 테스트는 먼저 빌드된 `dist`도 검사합니다.
 
-**Next Step:** [Phase 5 Windows Chrome 검증 절차](docs/PHASE5.md)에 따라 확장 프로그램을 새로고침하고 코드 자동 입력을 확인합니다.
+**Next Step:** [디자인·안정화 검증 문서](docs/DESIGN-STABILITY.md)에 따라 0.3.0을 적용하고 실제 백준 페이지에서 확인합니다.
+
+디자인은 코드트리의 얇은 상단 도구 모음과 넓은 편집 영역을 참고했습니다. 언어·테마·반전은 상단에, 저장 상태와 제출은 하단에 배치했습니다.
+`npm run preview:ui`를 실행하면 실제 dist를 사용하는 로컬 화면을 확인할 수 있습니다. 먼저 `npm run build`가 필요합니다.
 
 ---
 

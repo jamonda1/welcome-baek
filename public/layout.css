@@ -1,304 +1,290 @@
-
-/* ========================================
-   Welcome Baek - Layout
-======================================== */
-
-/* 전체 분할 레이아웃 */
+/* A compact coding workspace. All extension styles stay inside the split view. */
 #welcome-baek-layout {
   display: flex;
-  width: 100%;
-  min-height: 75vh;
   align-items: stretch;
+  width: 100%;
+  height: max(400px, calc(100dvh - var(--wb-top, 180px) - 12px));
+  padding: 10px 12px 0;
+  box-sizing: border-box;
+  background: #f4f5f7;
 }
-
-/* ========================================
-   백준 문제 영역
-======================================== */
-
+#welcome-baek-layout[data-reversed="true"] { flex-direction: row-reverse; }
 #welcome-baek-layout > .welcome-baek-problem {
-  flex: 1 1 50%;
+  flex: 1 1 0;
   width: auto !important;
   max-width: none !important;
   min-width: 0;
+  min-height: 0;
   margin: 0 !important;
+  padding: 22px 24px;
   box-sizing: border-box;
-  padding: 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  border: 1px solid #e1e4e8;
+  border-radius: 10px;
+  background: #fff;
 }
-
-/* ========================================
-   Welcome Baek 에디터 영역
-======================================== */
-
+#welcome-baek-layout > .welcome-baek-problem img { max-width: 100%; height: auto; }
+#welcome-baek-layout > .welcome-baek-problem pre { max-width: 100%; overflow: auto; }
 #welcome-baek-panel {
-  flex: 1 1 50%;
+  --wb-surface: #fff;
+  --wb-chrome: #f8f9fb;
+  --wb-text: #263245;
+  --wb-muted: #6b7280;
+  --wb-border: #e1e4e8;
+  --wb-hover: #edf0f5;
+  --wb-accent: #2563eb;
+  --wb-on-accent: #fff;
+  --wb-success: #23834b;
+  --wb-danger: #b42332;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  padding: 0;
   box-sizing: border-box;
-  background-color: #f8fafc;
-  padding: 24px;
+  overflow: hidden;
+  border: 1px solid var(--wb-border);
+  border-radius: 10px;
+  background: var(--wb-surface);
+  color: var(--wb-text);
+  font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+  color-scheme: light;
+  container-type: inline-size;
 }
-
-#welcome-baek-panel h2 {
-  margin: 0 0 16px;
-  font-size: 22px;
+#welcome-baek-panel[data-theme="one-dark"] {
+  --wb-surface: #282c34;
+  --wb-chrome: #23272e;
+  --wb-text: #e2e6ed;
+  --wb-muted: #a1a9b8;
+  --wb-border: #3b414c;
+  --wb-hover: #343b47;
+  --wb-accent: #7aa2f7;
+  --wb-on-accent: #15213c;
+  --wb-success: #98c379;
+  --wb-danger: #ff929d;
+  color-scheme: dark;
+}
+#welcome-baek-panel[data-theme="dracula"] {
+  --wb-surface: #282a36;
+  --wb-chrome: #22232e;
+  --wb-text: #f8f8f2;
+  --wb-muted: #b2aec9;
+  --wb-border: #414354;
+  --wb-hover: #37394b;
+  --wb-accent: #bd93f9;
+  --wb-on-accent: #241b38;
+  --wb-success: #50fa7b;
+  --wb-danger: #ff929d;
+  color-scheme: dark;
+}
+#welcome-baek-header {
+  flex: 0 0 auto;
+  min-width: 0;
+  border-bottom: 1px solid var(--wb-border);
+  background: var(--wb-chrome);
+}
+#welcome-baek-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 43px;
+  padding: 5px 10px;
+  box-sizing: border-box;
+}
+#welcome-baek-panel select,
+#welcome-baek-panel button { font: inherit; }
+#welcome-baek-panel #welcome-baek-language,
+#welcome-baek-panel #welcome-baek-theme {
+  width: auto;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--wb-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+#welcome-baek-panel #welcome-baek-language { margin-right: auto; font-weight: 600; }
+#welcome-baek-panel #welcome-baek-theme { max-width: 142px; color: var(--wb-muted); }
+#welcome-baek-panel select:hover { background: var(--wb-hover); }
+#welcome-baek-swap {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 1;
+  transform: translateX(-50%);
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 28px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #dfe4eb;
+  border-radius: 999px;
+  background: #f4f5f7;
+  color: #68758a;
+  box-shadow: none;
+  font: 20px/1 "Segoe UI", sans-serif;
+  cursor: pointer;
+  transition: background-color 120ms, border-color 120ms, color 120ms;
+}
+#welcome-baek-swap:hover { border-color: #c6d4ed; background: #e9eef7; color: #2563eb; }
+#welcome-baek-swap:active { background: #dce6f5; }
+#welcome-baek-swap:disabled { opacity: .5; cursor: default; }
+#welcome-baek-editor {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 160px;
+  overflow: hidden;
+  background: var(--wb-surface);
+}
+#welcome-baek-editor .cm-editor { height: 100%; font-size: 14px; }
+#welcome-baek-editor .cm-scroller {
+  overflow: auto;
+  overscroll-behavior: contain;
+  font-family: Consolas, "Cascadia Code", "SFMono-Regular", monospace;
+  line-height: 1.65;
+}
+#welcome-baek-editor .cm-content { padding: 16px 0; }
+#welcome-baek-editor .cm-line { padding: 0 16px; }
+#welcome-baek-editor .cm-gutters { padding-right: 5px; }
+#welcome-baek-footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-height: 48px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--wb-border);
+  background: var(--wb-chrome);
+}
+#welcome-baek-save-info {
+  display: flex;
+  flex: 1 1 150px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+}
+#welcome-baek-save-status {
+  min-width: 0;
+  color: var(--wb-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+#welcome-baek-save-status[data-state="saved"] { color: var(--wb-success); }
+#welcome-baek-save-status[data-state="error"] {
+  flex-basis: 100%;
+  max-height: 96px;
+  overflow: auto;
+  color: var(--wb-danger);
+}
+#welcome-baek-save-hint { color: var(--wb-muted); font-size: 10px; white-space: nowrap; }
+#welcome-baek-panel #welcome-baek-retry {
+  padding: 3px 7px;
+  border: 1px solid var(--wb-border);
+  border-radius: 4px;
+  background: var(--wb-surface);
+  color: var(--wb-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+#welcome-baek-panel #welcome-baek-submit {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: var(--wb-accent);
+  color: var(--wb-on-accent);
+  font-size: 12px;
   font-weight: 600;
+  cursor: pointer;
 }
-
-#welcome-baek-panel p {
-  color: #64748b;
+#welcome-baek-panel #welcome-baek-submit:hover { filter: brightness(0.94); }
+#welcome-baek-submit-status {
+  flex: 0 0 auto;
+  max-height: 110px;
+  padding: 9px 12px;
+  overflow: auto;
+  border-top: 1px solid var(--wb-border);
+  background: var(--wb-chrome);
+  color: var(--wb-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
-
-/* ========================================
-   화면 분할 비율
-======================================== */
-
-#welcome-baek-layout > .welcome-baek-problem,
-#welcome-baek-panel {
-  flex-basis: 0;
-  flex-shrink: 1;
-  min-width: 0;
-}
-
-/* ========================================
-   중앙 드래그 구분선
-======================================== */
-
-#welcome-baek-divider {
-  flex: 0 0 4px;
-  background-color: #dbe2ea;
-  cursor: col-resize;
+#welcome-baek-submit-status[data-state="error"] { color: var(--wb-danger); }
+#welcome-baek-panel button:disabled,
+#welcome-baek-panel select:disabled { opacity: .5; cursor: default; }
+#welcome-baek-panel :is(button, select):focus-visible,
+#welcome-baek-swap:focus-visible,
+#welcome-baek-divider:focus-visible { outline: 2px solid #7199f8; outline-offset: -2px; }
+#welcome-baek-panel [hidden] { display: none !important; }
+#welcome-baek-divider-controls {
   position: relative;
+  z-index: 1;
+  flex: 0 0 12px;
+}
+#welcome-baek-divider {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
   touch-action: none;
-  z-index: 10;
-  transition: background-color 0.15s ease;
 }
-
-#welcome-baek-divider:hover,
-#welcome-baek-divider:active {
-  background-color: #94a3b8;
-}
-
-/* ========================================
-   중앙 Grip Handle
-======================================== */
-
 #welcome-baek-divider-handle {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-
-  width: 20px;
-  height: 52px;
-
-  display: grid;
-  grid-template-columns: repeat(2, 4px);
-  grid-auto-rows: 4px;
-  gap: 4px;
-  place-content: center;
-
-  background-color: #ffffff;
-  border: 1px solid #dbe2ea;
-  border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-
-  pointer-events: none;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-/* Grip Handle Hover */
-#welcome-baek-divider:hover #welcome-baek-divider-handle,
-#welcome-baek-divider:active #welcome-baek-divider-handle {
-  border-color: #94a3b8;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
-}
-
-/* ========================================
-   Grip Handle Dots (2열 x 3행)
-======================================== */
-
-.welcome-baek-divider-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background-color: #94a3b8;
-}
-
-/* ========================================
-   좌우 반전 버튼
-======================================== */
-
-#welcome-baek-swap {
-  position: absolute;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-
-  width: 36px;
-  height: 32px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  padding: 0;
-  margin: 0;
-
-  appearance: none;
-  background: #ffffff;
-  color: #64748b;
-  border: 1px solid #dbe2ea;
-  border-radius: 9px;
-
-  font-family: sans-serif;
-  font-size: 22px;
-  line-height: 1;
-  font-weight: 500;
-
-  cursor: pointer;
-  z-index: 2;
-
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-#welcome-baek-swap:hover {
-  background-color: #f1f5f9;
-  color: #334155;
-  border-color: #94a3b8;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
-}
-
-#welcome-baek-swap:focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 3px;
-}
-
-#welcome-baek-swap:active {
-  background-color: #e2e8f0;
-}
-
-/* ========================================
-   CodeMirror 에디터 영역
-======================================== */
-
-#welcome-baek-editor {
-  width: 100%;
-  height: 65vh;
-  margin-top: 16px;
-  border: 1px solid #dbe2ea;
-  border-radius: 8px;
-  overflow: hidden;
-  background: #ffffff;
-}
-
-#welcome-baek-editor .cm-editor {
-  height: 100%;
-  font-size: 14px;
-}
-
-#welcome-baek-editor .cm-scroller {
-  overflow: auto;
-}
-
-/* 언어 및 테마 선택 메뉴 정렬 */
-#welcome-baek-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* 테마 선택 메뉴 */
-#welcome-baek-theme,
-#welcome-baek-language,
-#welcome-baek-retry {
-  width: 145px;
+  width: 3px;
   height: 36px;
-  padding: 0 10px;
-
-  background: #ffffff;
-  color: #334155;
-  border: 1px solid #dbe2ea;
-  border-radius: 6px;
-
-  font-size: 14px;
-  cursor: pointer;
+  border-radius: 3px;
+  background: #c9ced6;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
-
-#welcome-baek-submit {
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid #2563eb;
-  border-radius: 6px;
-  background: #2563eb;
-  color: #fff;
-  font-size: 14px;
-  cursor: pointer;
+#welcome-baek-divider:hover #welcome-baek-divider-handle,
+#welcome-baek-divider:focus-visible #welcome-baek-divider-handle { background: #6b8edb; }
+.welcome-baek-divider-dot { display: none; }
+#welcome-baek-panel .welcome-baek-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
-#welcome-baek-submit:hover { background: #1d4ed8; }
-#welcome-baek-submit-status {
-  margin-top: 10px;
-  font-size: 13px;
-  color: #475569;
-  overflow-wrap: anywhere;
+@container (max-width: 420px) {
+  #welcome-baek-save-hint { display: none; }
+  #welcome-baek-controls { gap: 2px; padding-inline: 6px; }
+  #welcome-baek-panel #welcome-baek-theme { max-width: 118px; }
 }
-#welcome-baek-submit-status[data-state="error"] { color: #b91c1c; }
-#welcome-baek-submit-status[hidden] { display: none; }
-
-#welcome-baek-retry { width: auto; }
-
-#welcome-baek-save-info {
-  display: flex;
-  flex: 1 0 100%;
-  min-width: 0;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 12px;
+@container (max-width: 300px) {
+  #welcome-baek-save-info { flex-basis: 100%; }
+  #welcome-baek-panel #welcome-baek-submit { width: 100%; }
+  #welcome-baek-panel #welcome-baek-theme { max-width: 104px; }
 }
-
-#welcome-baek-save-hint {
-  color: #64748b;
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-
-#welcome-baek-save-status {
-  flex: 1 1 140px;
-  min-width: 0;
-  min-height: 22px;
-  font-size: 13px;
-  text-align: right;
-  color: #475569;
-  overflow-wrap: anywhere;
-}
-
-#welcome-baek-save-status[data-state="error"] {
-  flex: 1 1 100%;
-  color: #b91c1c;
-  text-align: left;
-}
-#welcome-baek-save-status[data-state="saved"] { color: #15803d; }
-#welcome-baek-retry[hidden] { display: none; }
-#welcome-baek-retry { margin-left: auto; }
-#welcome-baek-panel button:disabled,
-#welcome-baek-panel select:disabled { opacity: .6; cursor: wait; }
-
-/* 에디터 헤더 */
-#welcome-baek-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-#welcome-baek-header h2 {
-  margin: 0;
+@media (max-width: 760px) {
+  #welcome-baek-layout,
+  #welcome-baek-layout[data-reversed="true"] { flex-direction: column; height: auto; gap: 10px; padding: 8px; }
+  #welcome-baek-layout[data-reversed="true"] { flex-direction: column-reverse; }
+  #welcome-baek-layout > .welcome-baek-problem { flex: none !important; max-height: 65dvh; padding: 18px; }
+  #welcome-baek-panel { flex: none !important; height: 75dvh; min-height: 380px; }
+  #welcome-baek-divider-controls { flex: none; height: 32px; margin-block: -4px; }
+  #welcome-baek-swap { top: 0; }
+  #welcome-baek-divider { display: none; }
 }
