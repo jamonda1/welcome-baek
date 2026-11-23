@@ -6,11 +6,13 @@ const ticks = async () => { for (let i = 0; i < 30; i++) await Promise.resolve()
 
 describe('initial loading failures', () => {
   it('locks after preference/code read failures and retries without overwriting stored code', async () => {
-    const get = vi.fn()
+    const readCodeAndPreferences = vi.fn()
       .mockRejectedValueOnce(new Error('preferences unavailable'))
       .mockResolvedValueOnce({})
       .mockRejectedValueOnce(new Error('code unavailable'))
       .mockResolvedValueOnce({ [codeKey('1000', 'java')]: { code: 'precious Java' } });
+    const get = vi.fn((keys: string[]) => keys[0]?.includes(':cases:')
+      ? Promise.resolve({}) : readCodeAndPreferences());
     const set = vi.fn(async () => {});
     vi.stubGlobal('chrome', { storage: { local: { get, set } } });
     document.body.innerHTML = '<div class="container content"><h1>1000번</h1></div>';

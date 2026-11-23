@@ -157,14 +157,14 @@
 #welcome-baek-editor .cm-line { padding: 0 16px; }
 #welcome-baek-editor .cm-gutters { padding-right: 5px; }
 #welcome-baek-footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   flex: 0 0 auto;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 0;
   min-height: 48px;
-  padding: 7px 10px;
+  padding: 6px;
   border-top: 1px solid var(--wb-border);
   background: var(--wb-chrome);
 }
@@ -202,7 +202,7 @@
 #welcome-baek-panel #welcome-baek-submit {
   flex: 0 0 auto;
   min-height: 32px;
-  padding: 0 13px;
+  padding: 0 8px;
   border: 1px solid transparent;
   border-radius: 5px;
   background: var(--wb-accent);
@@ -211,6 +211,43 @@
   font-weight: 600;
   cursor: pointer;
 }
+#welcome-baek-footer > button { min-width: 0; min-height: 34px; padding: 5px 4px; border: 0; border-radius: 5px;
+  background: transparent; color: var(--wb-muted); font-size: 12px; cursor: pointer; }
+#welcome-baek-footer > button + button { border-left: 1px solid var(--wb-border); }
+#welcome-baek-footer > button:hover { background: var(--wb-hover); }
+#welcome-baek-footer > button[data-active="true"] { color: var(--wb-accent); background: var(--wb-hover); font-weight: 600; }
+#welcome-baek-drawer { display: flex; flex-direction: column; flex: 0 0 auto; height: 0; min-height: 0;
+  box-sizing: border-box; overflow: hidden; background: var(--wb-surface); transition: height 150ms ease; }
+#welcome-baek-drawer[data-dragging="true"] { transition: none; }
+#welcome-baek-drawer-handle { flex: 0 0 14px; display: grid; place-items: center; border-top: 1px solid var(--wb-border);
+  background: var(--wb-chrome); color: var(--wb-muted); cursor: row-resize; touch-action: none; line-height: 10px; }
+#welcome-baek-drawer-handle span { font-size: 11px; letter-spacing: 3px; pointer-events: none; }
+#welcome-baek-drawer-handle:hover, #welcome-baek-drawer[data-snap="true"] #welcome-baek-drawer-handle { color: var(--wb-accent); background: var(--wb-hover); }
+#welcome-baek-drawer-handle:focus-visible { outline: 2px solid #7199f8; outline-offset: -2px; }
+#welcome-baek-drawer .wb-drawer-heading { display: flex; align-items: center; justify-content: space-between; flex: 0 0 32px; padding: 0 12px; gap: 8px; }
+#welcome-baek-drawer .wb-drawer-heading strong { font-size: 12px; font-weight: 600; color: var(--wb-text); }
+#welcome-baek-drawer button { border: 1px solid var(--wb-border); border-radius: 5px; padding: 3px 7px;
+  background: var(--wb-chrome); color: var(--wb-muted); font-size: 11px; cursor: pointer; white-space: nowrap; }
+#welcome-baek-drawer button:hover, #welcome-baek-drawer button[aria-pressed="true"] { color: var(--wb-accent); background: var(--wb-hover); }
+#welcome-baek-drawer #welcome-baek-drawer-close { border: 0; background: transparent; }
+#welcome-baek-drawer .wb-drawer-body { min-height: 0; flex: 1 1 0; overflow: auto; overscroll-behavior: contain; padding: 6px 12px 12px; }
+#welcome-baek-drawer .wb-case-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+#welcome-baek-drawer .wb-case-list { display: flex; gap: 5px; max-width: 100%; overflow-x: auto; }
+#welcome-baek-drawer .wb-case-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+#welcome-baek-drawer .wb-case-fields label { display: flex; flex-direction: column; gap: 5px; margin: 0; color: var(--wb-muted); font-size: 11px; font-weight: 400; }
+#welcome-baek-drawer textarea { width: 100%; min-height: 72px; box-sizing: border-box; padding: 7px 9px; border: 1px solid var(--wb-border);
+  border-radius: 5px; background: var(--wb-chrome); color: var(--wb-text); font: 12px/1.6 Consolas, monospace; resize: vertical; }
+#welcome-baek-drawer textarea:focus-visible { outline: 2px solid #7199f8; outline-offset: -2px; }
+#welcome-baek-drawer .wb-empty { margin: 12px 0 5px; color: var(--wb-muted); font-size: 12px; }
+#welcome-baek-drawer .wb-muted { margin: 0; color: var(--wb-muted); font-size: 11px; }
+#welcome-baek-drawer .wb-result-notice { color: var(--wb-muted); font-size: 11px; margin: 0 0 10px; }
+#welcome-baek-drawer .wb-result { padding: 8px 0; border-top: 1px solid var(--wb-border); color: var(--wb-text); font-size: 12px; }
+#welcome-baek-drawer summary { cursor: pointer; }
+#welcome-baek-drawer summary[data-verdict="passed"] { color: var(--wb-success); }
+#welcome-baek-drawer summary:is([data-verdict="failed"], [data-verdict="error"]) { color: var(--wb-danger); }
+#welcome-baek-drawer .wb-result strong { display: block; margin-top: 10px; font-size: 11px; font-weight: 400; }
+#welcome-baek-drawer pre { margin: 5px 0 0; padding: 8px; overflow: auto; border-radius: 4px; background: var(--wb-chrome); color: var(--wb-text); font: 12px/1.6 Consolas, monospace; }
+@media (prefers-reduced-motion: reduce) { #welcome-baek-drawer { transition: none; } }
 #welcome-baek-panel #welcome-baek-submit:hover { filter: brightness(0.94); }
 #welcome-baek-submit-status {
   flex: 0 0 auto;
@@ -270,6 +307,8 @@
   white-space: nowrap;
 }
 @container (max-width: 420px) {
+  #welcome-baek-footer { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+  #welcome-baek-drawer .wb-case-fields { grid-template-columns: minmax(0, 1fr); }
   #welcome-baek-save-hint { display: none; }
   #welcome-baek-controls { grid-template-columns: auto minmax(0, 1fr); gap: 2px 6px; padding-inline: 6px; }
   #welcome-baek-panel #welcome-baek-theme { grid-column: 1 / -1; justify-self: end; max-width: 118px; }

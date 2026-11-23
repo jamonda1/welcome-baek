@@ -8,6 +8,7 @@ import {
 import { Repository, storageError, type Preferences } from '../storage/storage';
 import { BufferedValue, Drafts } from '../storage/persistence';
 import { openSubmission, type SubmissionSnapshot } from '../submission/transfer';
+import { WorkspaceDrawer } from '../testing/drawer';
 
 const main = document.querySelector<HTMLElement>(
   '.container.content'
@@ -117,7 +118,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   const submitButton = document.createElement('button');
   submitButton.id = 'welcome-baek-submit';
   submitButton.type = 'button';
-  submitButton.textContent = '제출 페이지로 이동';
+  submitButton.textContent = '코드 제출';
   submitButton.title = '현재 코드를 새 탭의 백준 제출 화면으로 가져오기';
   const editorFooter = document.createElement('div');
   editorFooter.id = 'welcome-baek-footer';
@@ -146,7 +147,6 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   saveInfo.append(status, retryButton, saveHint);
   controls.append(languageSelect, saveInfo, themeSelect);
   editorHeader.append(title, controls);
-  editorFooter.append(submitButton);
 
   // ========================================
   // CodeMirror 에디터 영역
@@ -155,7 +155,9 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   const editorContainer = document.createElement('div');
   editorContainer.id = 'welcome-baek-editor';
 
-  panel.append(editorHeader, editorContainer, submitStatus, editorFooter);
+  const drawer = new WorkspaceDrawer(panel, main, repository, problemId, renderStatus);
+  editorFooter.append(drawer.casesButton, drawer.resultsButton, drawer.runButton, submitButton);
+  panel.append(editorHeader, editorContainer, drawer.root, submitStatus, editorFooter);
 
   // ========================================
   // 중앙 구분선
@@ -349,6 +351,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   const editor = createEditor(editorContainer, {
     onChange(code) {
       if (!loading) drafts.entries.get(currentLanguage)?.update(code);
+      drawer.setContext(currentLanguage, code);
     },
     onSave: saveCurrent
   });
@@ -357,12 +360,15 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     preferences.get(key)?.update(value);
   }
 
+  function allWriters() {
+    return [...drafts.entries.values(), ...preferences.values(), ...(drawer.cases.writer ? [drawer.cases.writer] : [])];
+  }
   function renderStatus() {
-    const writers = [...drafts.entries.values(), ...preferences.values()];
+    const writers = allWriters();
     const failed = writers.find(writer => writer.state === 'error');
     const saving = writers.some(writer => writer.state === 'saving');
     const pending = writers.some(writer => writer.dirty);
-    const nextStatus = loadError || failed ? 'error' : loading ? 'loading' : saving ? 'saving' : pending ? 'pending'
+    const nextStatus = loadError || drawer.cases.error || failed ? 'error' : loading ? 'loading' : saving ? 'saving' : pending ? 'pending'
       : writers.some(writer => writer.state === 'saved') ? 'saved' : 'ready';
     if (nextStatus !== previousStatus) {
       clearTimeout(statusTimer);
@@ -377,11 +383,12 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     }
     status.dataset.state = nextStatus;
     status.textContent = loadError ? `불러오기 실패: ${storageError(loadError)}`
-      : failed ? `저장 실패 (다른 언어·설정 포함): ${storageError(failed.error)}`
+      : drawer.cases.error ? `테스트 케이스 불러오기 실패: ${storageError(drawer.cases.error)}`
+      : failed ? `저장 실패 (코드·설정·테스트 케이스): ${storageError(failed.error)}`
       : loading ? '코드 불러오는 중…'
       : saving ? '저장 중…' : pending ? '변경 사항 있음'
       : nextStatus === 'saved' ? compactSaved ? '✓ 저장됨' : '✓ 저장되었습니다' : '자동 저장 사용 중';
-    retryButton.hidden = !loadError && !failed;
+    retryButton.hidden = !loadError && !drawer.cases.error && !failed;
     languageSelect.disabled = !initialized;
     themeSelect.disabled = !initialized;
     swapButton.disabled = !initialized;
@@ -404,6 +411,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
       const draft = await drafts.load(language);
       if (version !== loadVersion) return;
       editor.showDocument(language, draft.value);
+      drawer.setContext(language, draft.value);
       loading = false;
     } catch (error) {
       if (version !== loadVersion) return;
@@ -413,7 +421,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   }
 
   function flushAll() {
-    return Promise.all([...drafts.entries.values(), ...preferences.values()].map(writer => writer.flush()));
+    return Promise.all(allWriters().map(writer => writer.flush()));
   }
 
   function saveCurrent() {
@@ -466,6 +474,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
 
   retryButton.addEventListener('click', () => {
     void flushAll();
+    if (drawer.cases.error) void drawer.cases.load();
     if (!initialized) void initialize();
     else if (loadError) void showLanguage(currentLanguage);
   });
@@ -494,7 +503,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
         ? error.message : storageError(error);
     }).finally(() => {
       preparingSubmission = false;
-      submitButton.textContent = '제출 페이지로 이동';
+      submitButton.textContent = '코드 제출';
       renderStatus();
     });
   });
@@ -505,11 +514,12 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   });
   window.addEventListener('pagehide', () => { void flushAll(); });
   window.addEventListener('beforeunload', event => {
-    if ([...drafts.entries.values(), ...preferences.values()].some(writer => writer.dirty)) {
+    if (allWriters().some(writer => writer.dirty)) {
       void flushAll();
       event.preventDefault();
       event.returnValue = '';
     }
   });
   void initialize();
+  void drawer.cases.load();
 }

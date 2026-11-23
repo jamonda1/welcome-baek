@@ -38,6 +38,9 @@ export function storageError(error: unknown): string {
 export class Repository {
   constructor(private area: StorageArea = local) {}
 
+  async readValue(key: string): Promise<unknown> { return (await this.area.get([key]))[key]; }
+  writeValue(key: string, value: unknown): Promise<void> { return this.area.set({ [key]: value }); }
+
   async readCode(problemId: string, language: CodeLanguage): Promise<string | undefined> {
     const key = codeKey(problemId, language);
     const record = (await this.area.get([key]))[key];
