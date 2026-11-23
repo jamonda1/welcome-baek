@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { transferKey, transferLifetime } from '../src/submission/transfer';
+import { transferKey, transferLifetime, transferSessionKey } from '../src/submission/transfer';
 import { messageBus, submissionForm, transferStorage } from './submission-fixture';
 
 const token = '00000000-0000-4000-8000-000000000010';
@@ -17,6 +17,7 @@ describe('production submission scripts', () => {
     window.eval(readFileSync('dist/submit-bridge.js', 'utf8'));
   });
   beforeEach(() => {
+    sessionStorage.clear();
     history.replaceState(null, '', `/submit/1000?welcome_baek_transfer=${token}`);
     messageBus();
   });
@@ -35,7 +36,9 @@ describe('production submission scripts', () => {
     const { editor, source, language, submitted } = submissionForm();
     const { records } = transferStorage({ [transferKey(token)]: snapshot(), 'welcome-baek:v1:code:1000:python': { code: 'saved draft' } });
     await run();
-    expect(status()).toContain('코드를 가져왔습니다');
+    expect(status()).toBe('Welcome Baek: Python 3 코드를 가져왔습니다. 제출 전 언어와 공개 범위를 확인해주세요.');
+    expect(Array.from(document.querySelectorAll('#welcome-baek-import p > strong'), field => field.textContent))
+      .toEqual(['언어', '공개 범위']);
     expect(editor.getValue()).toBe(code);
     expect(source.value).toBe(code);
     expect(language.value).toBe('28');
@@ -104,16 +107,31 @@ describe('production submission scripts', () => {
     await settle();
     expect(editor.getValue()).toBe(code);
   });
-  it('leaves login pages untouched and can resume when the marked submit URL returns', async () => {
+  it('resumes on the same tab after login removes the URL token, then consumes the tab marker', async () => {
     const { editor } = submissionForm();
     const { records, local } = transferStorage({ [transferKey(token)]: snapshot() });
-    const next = `/submit/1000?welcome_baek_transfer=${token}`;
-    history.replaceState(null, '', `/login?next=${encodeURIComponent(next)}`);
+    sessionStorage.setItem(transferSessionKey('1000'), token);
+    history.replaceState(null, '', '/login?next=%2Fsubmit%2F1000');
     await run();
     expect(local.get).not.toHaveBeenCalled();
     expect(records[transferKey(token)]).toBeDefined();
-    history.replaceState(null, '', next);
+    history.replaceState(null, '', '/submit/1000');
     await run();
     expect(editor.getValue()).toBe(code);
+    expect(sessionStorage.getItem(transferSessionKey('1000'))).toBeNull();
+    expect(records[transferKey(token)]).toBeUndefined();
+    const reopened = submissionForm('edited after import');
+    await run();
+    expect(reopened.editor.getValue()).toBe('edited after import');
+    expect(document.querySelector('#welcome-baek-import')).toBeNull();
+  });
+  it('ignores the tab marker on the submit page of a different problem', async () => {
+    const { editor } = submissionForm('other problem');
+    const { local } = transferStorage({ [transferKey(token)]: snapshot() });
+    sessionStorage.setItem(transferSessionKey('1000'), token);
+    history.replaceState(null, '', '/submit/1001');
+    await run();
+    expect(local.get).not.toHaveBeenCalled();
+    expect(editor.getValue()).toBe('other problem');
   });
 });

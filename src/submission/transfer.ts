@@ -11,6 +11,25 @@ export interface SubmissionSnapshot {
 }
 export const validToken = (token: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token);
 export const transferKey = (token: string) => `${transferPrefix}${token}`;
+export const transferSessionKey = (problemId: string) => `welcome-baek:v1:submit-tab:${problemId}`;
+
+export function submissionToken(problemId: string): string | null {
+  const fromUrl = new URL(location.href).searchParams.get(transferParameter);
+  if (fromUrl) return fromUrl;
+  try {
+    const token = sessionStorage.getItem(transferSessionKey(problemId));
+    return token && validToken(token) ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearTabTransfer(problemId: string, token: string): void {
+  try {
+    const key = transferSessionKey(problemId);
+    if (sessionStorage.getItem(key) === token) sessionStorage.removeItem(key);
+  } catch { /* The URL remains available when session storage is blocked. */ }
+}
 export async function discardTransfer(token: string): Promise<void> {
   await chrome.storage.local.remove(transferKey(token));
 }
@@ -61,6 +80,11 @@ export async function openSubmission(snapshot: SubmissionSnapshot, saveDraft: ()
     if (!await saveDraft()) throw new Error('코드를 저장하지 못했습니다. 저장 오류를 해결한 뒤 다시 시도해 주세요');
     await storeTransfer(token, snapshot);
     if (tab.closed) throw new Error('제출 탭이 닫혔습니다. 다시 열어 주세요');
+    try {
+      // The blank tab inherits the problem origin and has its own session storage.
+      // BOJ removes the URL token when it sends the tab to login.
+      tab.sessionStorage.setItem(transferSessionKey(snapshot.problemId), token);
+    } catch { /* Keep the URL handoff for users who block session storage. */ }
     tab.location.replace(destination.href);
   } catch (error) {
     tab.close();

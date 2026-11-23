@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { openSubmission, readTransfer, storeTransfer, transferKey, transferLifetime, transferPrefix, type SubmissionSnapshot } from '../src/submission/transfer';
+import { openSubmission, readTransfer, storeTransfer, transferKey, transferLifetime, transferPrefix, transferSessionKey, type SubmissionSnapshot } from '../src/submission/transfer';
 import { transferStorage } from './submission-fixture';
 
 const token = '00000000-0000-4000-8000-000000000001';
@@ -38,7 +38,8 @@ describe('submission handoff storage', () => {
   });
   it('opens synchronously, awaits saving, and puts only a token in the destination URL', async () => {
     const { records } = transferStorage();
-    const tab = { opener: window, closed: false, close: vi.fn(), location: { replace: vi.fn() } };
+    const tab = { opener: window, closed: false, close: vi.fn(),
+      sessionStorage: { setItem: vi.fn() }, location: { replace: vi.fn() } };
     const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
     let finishSave!: (value: boolean) => void;
     const work = openSubmission(snapshot(), () => new Promise(resolve => { finishSave = resolve; }));
@@ -51,6 +52,8 @@ describe('submission handoff storage', () => {
     expect(url.pathname).toBe('/submit/1000');
     expect(url.searchParams.get('welcome_baek_transfer')).toMatch(/^[0-9a-f-]{36}$/i);
     expect(url.href).not.toContain('public');
+    expect(tab.sessionStorage.setItem).toHaveBeenCalledWith(transferSessionKey('1000'), url.searchParams.get('welcome_baek_transfer'));
+    expect(sessionStorage.getItem(transferSessionKey('1000'))).toBeNull();
     expect(Object.keys(records).filter(key => key.startsWith(transferPrefix))).toHaveLength(1);
   });
   it('keeps code local when popups are blocked', async () => {

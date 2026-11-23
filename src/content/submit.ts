@@ -1,10 +1,10 @@
 import { languages } from '../languages/catalog';
 import { prefillEditor } from '../submission/client';
-import { discardTransfer, readTransfer, transferParameter } from '../submission/transfer';
+import { clearTabTransfer, discardTransfer, readTransfer, submissionToken, transferParameter } from '../submission/transfer';
 import { storageError } from '../storage/storage';
 
 const problemId = /^\/submit\/(\d+)\/?$/.exec(location.pathname)?.[1];
-const token = new URL(location.href).searchParams.get(transferParameter);
+const token = problemId ? submissionToken(problemId) : null;
 
 if (problemId && token && !document.querySelector('#welcome-baek-import')) {
   const panel = document.createElement('section');
@@ -44,11 +44,21 @@ if (problemId && token && !document.querySelector('#welcome-baek-import')) {
       const result = await prefillEditor(snapshot, replaceExisting);
       if (result === 'applied') {
         panel.dataset.state = 'success';
-        message.textContent = `Welcome Baek: ${languages[snapshot.language].submission.label} 코드를 가져왔습니다. 공개 범위와 내용을 확인한 뒤 백준의 제출 버튼을 눌러 주세요.`;
-        const url = new URL(location.href);
-        url.searchParams.delete(transferParameter);
+        const language = document.createElement('strong');
+        language.textContent = '언어';
+        const visibility = document.createElement('strong');
+        visibility.textContent = '공개 범위';
+        message.replaceChildren(
+          `Welcome Baek: ${languages[snapshot.language].submission.label} 코드를 가져왔습니다. 제출 전 `,
+          language, '와 ', visibility, '를 확인해주세요.'
+        );
         // Do not apply the snapshot again when the user refreshes after editing.
-        history.replaceState(history.state, '', url.href);
+        clearTabTransfer(problemId!, token!);
+        const url = new URL(location.href);
+        if (url.searchParams.has(transferParameter)) {
+          url.searchParams.delete(transferParameter);
+          history.replaceState(history.state, '', url.href);
+        }
         try { await discardTransfer(token!); } catch { /* Expired copies are pruned on the next handoff. */ }
       } else {
         panel.dataset.state = 'error';
