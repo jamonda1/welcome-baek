@@ -153,7 +153,7 @@ Welcome Baek은 백준 온라인 저지(BOJ)의 문제 풀이 환경을 개선�
 
 ## 6. 현재 개발 상태
 
-**Version:** 0.4.0
+**Version:** 1.0.0
 
 **Current Phase:** Chrome에서 Java 11 로컬 컴파일 및 실행
 
