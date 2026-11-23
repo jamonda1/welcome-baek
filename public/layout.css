@@ -232,6 +232,26 @@
   cursor: pointer;
 }
 
+#welcome-baek-submit {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+#welcome-baek-submit:hover { background: #1d4ed8; }
+#welcome-baek-submit-status {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+#welcome-baek-submit-status[data-state="error"] { color: #b91c1c; }
+#welcome-baek-submit-status[hidden] { display: none; }
+
 #welcome-baek-retry { width: auto; }
 
 #welcome-baek-save-info {

@@ -7,6 +7,7 @@ import {
 } from '../editor/editor';
 import { Repository, storageError, type Preferences } from '../storage/storage';
 import { BufferedValue, Drafts } from '../storage/persistence';
+import { openSubmission, type SubmissionSnapshot } from '../submission/transfer';
 
 const main = document.querySelector<HTMLElement>(
   '.container.content'
@@ -26,6 +27,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   let previousStatus = '';
   let compactSaved = false;
   let statusTimer: ReturnType<typeof setTimeout> | undefined;
+  let preparingSubmission = false;
   // ========================================
   // 전체 분할 레이아웃
   // ========================================
@@ -107,6 +109,17 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   }
 
   controls.append(languageSelect, themeSelect);
+  const submitButton = document.createElement('button');
+  submitButton.id = 'welcome-baek-submit';
+  submitButton.type = 'button';
+  submitButton.textContent = '제출 페이지로 이동';
+  submitButton.title = '현재 코드를 새 탭의 백준 제출 화면으로 가져오기';
+  controls.append(submitButton);
+  const submitStatus = document.createElement('div');
+  submitStatus.id = 'welcome-baek-submit-status';
+  submitStatus.setAttribute('role', 'status');
+  submitStatus.setAttribute('aria-live', 'polite');
+  submitStatus.hidden = true;
   const saveInfo = document.createElement('div');
   saveInfo.id = 'welcome-baek-save-info';
   const saveHint = document.createElement('span');
@@ -132,7 +145,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   const editorContainer = document.createElement('div');
   editorContainer.id = 'welcome-baek-editor';
 
-  panel.append(editorHeader, editorContainer);
+  panel.append(editorHeader, submitStatus, editorContainer);
 
   // ========================================
   // 중앙 구분선
@@ -322,6 +335,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     languageSelect.disabled = !initialized;
     themeSelect.disabled = !initialized;
     swapButton.disabled = !initialized;
+    submitButton.disabled = loading || !initialized || preparingSubmission;
     editorContainer.setAttribute('aria-busy', String(loading));
   }
 
@@ -398,6 +412,33 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     void flushAll();
     if (!initialized) void initialize();
     else if (loadError) void showLanguage(currentLanguage);
+  });
+  submitButton.addEventListener('click', () => {
+    if (loading || preparingSubmission || !initialized) return;
+    const draft = drafts.entries.get(currentLanguage);
+    if (!draft) return;
+    // Capture code and language before asynchronous saves or another language switch.
+    const snapshot: SubmissionSnapshot = {
+      problemId, language: currentLanguage, code: editor.view.state.doc.toString(), createdAt: Date.now()
+    };
+    preparingSubmission = true;
+    submitStatus.hidden = false;
+    submitStatus.dataset.state = 'loading';
+    submitStatus.textContent = '제출할 코드를 준비하는 중…';
+    submitButton.textContent = '준비 중…';
+    renderStatus();
+    void openSubmission(snapshot, () => draft.flush(true)).then(() => {
+      submitStatus.dataset.state = 'success';
+      submitStatus.textContent = '제출 화면을 열었습니다. 새 탭에서 언어와 코드를 확인해 주세요.';
+    }).catch((error: unknown) => {
+      submitStatus.dataset.state = 'error';
+      submitStatus.textContent = error instanceof Error && !/quota|context invalidated/i.test(error.message)
+        ? error.message : storageError(error);
+    }).finally(() => {
+      preparingSubmission = false;
+      submitButton.textContent = '제출 페이지로 이동';
+      renderStatus();
+    });
   });
 
   // Unload cannot await promises. Start writes early and warn while anything is unsaved.

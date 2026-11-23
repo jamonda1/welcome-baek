@@ -1,7 +1,8 @@
 {
     "manifest_version": 3,
     "name": "Welcome Baek",
-    "version": "0.1.0",
+    "version": "0.2.0",
+    "minimum_chrome_version": "111",
     "description": "Better coding experience for Baekjoon",
     "permissions": ["storage"],
     "action": {
@@ -13,6 +14,19 @@
             "js": ["problem.js"],
             "css": ["layout.css"],
             "run_at": "document_idle"
+        },
+        {
+            "matches": ["https://www.acmicpc.net/submit/*", "https://acmicpc.net/submit/*"],
+            "js": ["submit-bridge.js"],
+            "run_at": "document_idle",
+            "world": "MAIN"
+        },
+        {
+            "matches": ["https://www.acmicpc.net/submit/*", "https://acmicpc.net/submit/*"],
+            "js": ["submit.js"],
+            "css": ["submit.css"],
+            "run_at": "document_idle",
+            "world": "ISOLATED"
         }
     ]
 }

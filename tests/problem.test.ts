@@ -20,7 +20,7 @@ describe('problem page integration', () => {
   };
   let resolveCpp!: (data: Record<string, unknown>) => void;
   let failNextWrite = false;
-  const get = vi.fn((keys: string[]) => keys.includes(codeKey('1000', 'cpp'))
+  const get = vi.fn((keys: string[] | null) => keys?.includes(codeKey('1000', 'cpp'))
     ? new Promise<Record<string, unknown>>(resolve => { resolveCpp = resolve; })
     : Promise.resolve({ ...data }));
   const set = vi.fn(async (items: Record<string, unknown>) => {
@@ -36,7 +36,7 @@ describe('problem page integration', () => {
     expect(event.defaultPrevented).toBe(true);
   };
   beforeAll(async () => {
-    vi.stubGlobal('chrome', { storage: { local: { get, set } } });
+    vi.stubGlobal('chrome', { storage: { local: { get, set, remove: vi.fn(async () => {}) } } });
     document.body.innerHTML = '<div class="container content"><h1>1000번</h1></div>';
     await import('../src/content/problem');
     await ticks();
@@ -152,5 +152,19 @@ describe('problem page integration', () => {
     expect(data[preferenceKey('theme')]).toBe('one-dark');
     expect(data[preferenceKey('reversed')]).toBe(false);
     expect(document.querySelector('#welcome-baek-layout')!.firstElementChild!.classList.contains('welcome-baek-problem')).toBe(true);
+  });
+  it('captures the clicked problem/language/code even if the user edits during preparation', async () => {
+    const tab = { closed: false, close: vi.fn(), location: { replace: vi.fn() } };
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+    const clickedCode = view().state.doc.toString();
+    document.querySelector<HTMLButtonElement>('#welcome-baek-submit')!.click();
+    expect(open).toHaveBeenCalledTimes(1);
+    view().dispatch({ changes: { from: 0, insert: 'edited after click ' } });
+    for (let i = 0; i < 60; i++) await Promise.resolve();
+    const destination = new URL(tab.location.replace.mock.calls[0][0]);
+    const token = destination.searchParams.get('welcome_baek_transfer')!;
+    expect(data[`welcome-baek:v1:transfer:${token}`]).toMatchObject({ problemId: '1000', language: 'cpp', code: clickedCode });
+    expect(destination.pathname).toBe('/submit/1000');
+    open.mockRestore();
   });
 });
