@@ -1,0 +1,39 @@
+
+/* 전체 분할 레이아웃 */
+#welcome-baek-layout {
+  display: flex;
+  width: 100%;
+  min-height: 75vh;
+  align-items: stretch;
+}
+
+/* 기존 백준 문제 영역 */
+#welcome-baek-layout > .welcome-baek-problem {
+  flex: 1 1 50%;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0;
+  margin: 0 !important;
+  box-sizing: border-box;
+  padding: 24px;
+}
+
+/* Welcome Baek 에디터 영역 */
+#welcome-baek-panel {
+  flex: 1 1 50%;
+  min-width: 0;
+  box-sizing: border-box;
+  border-left: 2px solid #e5e7eb;
+  background-color: #f8fafc;
+  padding: 24px;
+}
+
+#welcome-baek-panel h2 {
+  margin: 0 0 16px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+#welcome-baek-panel p {
+  color: #64748b;
+}

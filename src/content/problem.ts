@@ -1,19 +1,29 @@
-console.log('[Welcome Baek] Content Script 실행 성공!');
 
-const badge = document.createElement('div');
+const main = document.querySelector<HTMLElement>(
+  '.container.content'
+);
 
-badge.textContent = 'Welcome Baek 연결 성공';
+if (main && !document.querySelector('#welcome-baek-layout')) {
+  // 전체 분할 레이아웃
+  const layout = document.createElement('div');
+  layout.id = 'welcome-baek-layout';
 
-Object.assign(badge.style, {
-    position: 'fixed',
-    top: '80px',
-    right: '20px',
-    padding: '12px 20px',
-    backgroundColor: '#2563eb',
-    color: '#ffffff',
-    borderRadius: '8px',
-    zIndex: '2147483647',
-    fontWeight: 'bold',
-});
+  // 기존 백준 영역
+  main.classList.add('welcome-baek-problem');
 
-document.body.appendChild(badge);
+  // Welcome Baek 영역
+  const panel = document.createElement('aside');
+  panel.id = 'welcome-baek-panel';
+
+  const title = document.createElement('h2');
+  title.textContent = 'Welcome Baek';
+
+  const description = document.createElement('p');
+  description.textContent = '코드 에디터 영역';
+
+  panel.append(title, description);
+
+  // 기존 위치에 분할 레이아웃 삽입
+  main.before(layout);
+  layout.append(main, panel);
+}

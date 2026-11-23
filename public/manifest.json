@@ -10,6 +10,7 @@
         {
             "matches": ["https://www.acmicpc.net/problem/*", "https://acmicpc.net/problem/*"],
             "js": ["problem.js"],
+            "css": ["layout.css"],
             "run_at": "document_idle"
         }
     ]
