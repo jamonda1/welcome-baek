@@ -43,15 +43,15 @@ Welcome Baek은 백준 온라인 저지(BOJ)의 문제 풀이 환경을 개선�
 - [x] `popup.html` 생성
 - [x] Chrome 개발자 모드에서 확장 프로그램 설치
 - [x] Welcome Baek 팝업 실행 확인
-- [ ] TypeScript 및 Vite 개발 환경 구성
-- [ ] 기본 프로젝트 구조 정리
+- [x] TypeScript 및 Vite 개발 환경 구성
+- [x] 기본 프로젝트 구조 정리
 
 ### Phase 2. 백준 문제 페이지 통합
 
 **목표:** 문제 페이지에 코드 작성 영역 추가
 
-- [ ] Chrome Content Script 구현
-- [ ] `/problem/{problemId}` URL 감지
+- [x] Chrome Content Script 구현
+- [x] `/problem/{problemId}` URL 감지
 - [ ] 백준 기존 HTML 구조 분석
 - [ ] 문제 페이지 좌우 분할 레이아웃 구현
 - [ ] 오른쪽 코드 에디터 영역 추가
