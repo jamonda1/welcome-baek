@@ -1,3 +1,4 @@
+import { isSubmissionLanguageId } from '../languages/catalog';
 import { requestType, responseType, type PrefillRequest, type PrefillResponse, type PrefillStatus } from './protocol';
 
 interface CodeMirror5 {
@@ -52,7 +53,7 @@ export function installSubmitBridge(): () => void {
     if (!request || request.type !== requestType || typeof request.requestId !== 'string' ||
       !/^[0-9a-f-]{36}$/i.test(request.requestId) || typeof request.code !== 'string' ||
       typeof request.problemId !== 'string' || !/^\d+$/.test(request.problemId) ||
-      typeof request.languageId !== 'string' || !['93', '84', '28'].includes(request.languageId) ||
+      !isSubmissionLanguageId(request.languageId) ||
       typeof request.replaceExisting !== 'boolean') return;
     let status: PrefillStatus;
     try { status = completed.has(request.requestId) ? 'applied' : applyPrefill(request as PrefillRequest); }

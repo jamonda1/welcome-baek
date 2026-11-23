@@ -3,7 +3,9 @@ import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { undo } from '@codemirror/commands';
 import { syntaxTree } from '@codemirror/language';
-import { createEditor, templates, type CodeLanguage } from '../src/editor/editor';
+import { createEditor } from '../src/editor/editor';
+import { languageOrder } from '../src/languages/catalog';
+import { templates } from '../src/languages/templates';
 
 const editors: ReturnType<typeof createEditor>[] = [];
 function setup() {
@@ -28,7 +30,7 @@ describe('CodeMirror regression and shortcuts', () => {
     editor.view.dispatch({ changes: { from: 0, insert: 'new ' } });
     expect(onChange).toHaveBeenCalledWith('new restored code');
   });
-  it.each(['java', 'cpp', 'python'] as CodeLanguage[])('keeps %s syntax and four-space indentation', language => {
+  it.each(languageOrder)('keeps %s syntax and four-space indentation', language => {
     const { editor } = setup();
     editor.showDocument(language, templates[language]);
     expect(syntaxTree(editor.view.state).length).toBeGreaterThan(0);

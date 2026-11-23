@@ -1,10 +1,11 @@
+import { languages } from '../languages/catalog';
 import { requestType, responseType, type PrefillRequest, type PrefillResponse } from './protocol';
-import { languageTargets, type SubmissionSnapshot } from './transfer';
+import { type SubmissionSnapshot } from './transfer';
 
 export function prefillEditor(snapshot: SubmissionSnapshot, replaceExisting = false): Promise<PrefillResponse['status'] | 'timeout'> {
   const request: PrefillRequest = {
     type: requestType, requestId: crypto.randomUUID(), problemId: snapshot.problemId,
-    languageId: languageTargets[snapshot.language].id, code: snapshot.code, replaceExisting
+    languageId: languages[snapshot.language].submission.id, code: snapshot.code, replaceExisting
   };
   return new Promise(resolve => {
     let poll: ReturnType<typeof setInterval>;

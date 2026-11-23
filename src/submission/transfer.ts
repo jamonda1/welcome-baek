@@ -1,13 +1,8 @@
-import type { CodeLanguage } from '../editor/editor';
+import { isCodeLanguage, type CodeLanguage } from '../languages/catalog';
 
 export const transferParameter = 'welcome_baek_transfer';
 export const transferPrefix = 'welcome-baek:v1:transfer:';
 export const transferLifetime = 30 * 60 * 1000;
-export const languageTargets: Record<CodeLanguage, { id: string; label: string }> = {
-  java: { id: '93', label: 'Java 11' },
-  cpp: { id: '84', label: 'C++17' },
-  python: { id: '28', label: 'Python 3' }
-};
 export interface SubmissionSnapshot {
   problemId: string;
   language: CodeLanguage;
@@ -24,7 +19,7 @@ export function isSnapshot(value: unknown): value is SubmissionSnapshot {
   if (!value || typeof value !== 'object') return false;
   const item = value as Partial<SubmissionSnapshot>;
   return typeof item.problemId === 'string' && /^\d+$/.test(item.problemId) &&
-    (item.language === 'java' || item.language === 'cpp' || item.language === 'python') &&
+    isCodeLanguage(item.language) &&
     typeof item.code === 'string' && typeof item.createdAt === 'number' && Number.isFinite(item.createdAt);
 }
 

@@ -2,7 +2,8 @@ import { vi } from 'vitest';
 
 export function submissionForm(code = '') {
   document.body.innerHTML = `<main class="container content"><form id="submit_form">
-    <select id="language"><option value="93">Java 11</option><option value="84">C++17</option><option value="28">Python 3</option></select>
+    <select id="language"><option value="93">Java 11</option><option value="84">C++17</option><option value="28">Python 3</option>
+    <option value="75">C11</option><option value="86">C#</option><option value="17">node.js</option></select>
     <input type="radio" name="code_open" value="close" checked>
     <textarea id="source"></textarea><div class="CodeMirror"></div>
     <button type="submit" id="submit_button">제출</button></form></main>`;

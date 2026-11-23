@@ -56,6 +56,12 @@ describe('problem page integration', () => {
     expect(document.querySelector('#welcome-baek-footer #welcome-baek-submit')).not.toBeNull();
     expect(document.querySelector('#welcome-baek-save-hint')!.textContent).toContain('Ctrl+S');
   });
+  it('orders the language picker with the C family together', () => {
+    const picker = document.querySelector<HTMLSelectElement>('#welcome-baek-language')!;
+    expect(Array.from(picker.options, option => option.text)).toEqual([
+      'Java', 'C', 'C++', 'C#', 'Python', 'JavaScript'
+    ]);
+  });
   it('ignores a stale slow language response while immediately saving outgoing code', async () => {
     view().dispatch({ changes: { from: 0, to: view().state.doc.length, insert: 'latest Java' } });
     await select('#welcome-baek-language', 'cpp');

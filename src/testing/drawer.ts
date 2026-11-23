@@ -1,4 +1,4 @@
-import type { CodeLanguage } from '../editor/editor';
+import { defaultLanguage, type CodeLanguage } from '../languages/catalog';
 import { Repository } from '../storage/storage';
 import { MAX_CASES, readSamples, TestCases, type TestCase } from './cases';
 
@@ -39,7 +39,7 @@ export class WorkspaceDrawer {
   private expected = element('textarea');
   private add = button('welcome-baek-case-add', '＋ 추가');
   private remove = button('welcome-baek-case-remove', '삭제');
-  private importSamples = button('welcome-baek-case-import', '예제 가져오기');
+  private reset = button('welcome-baek-case-reset', '초기화');
   private empty = element('p', 'wb-empty');
   private fields = element('div', 'wb-case-fields');
   private active: DrawerTab = 'cases';
@@ -49,7 +49,7 @@ export class WorkspaceDrawer {
   private rememberedHeight = 0;
   private drag?: { pointer: number; startY: number; startHeight: number; userSelect: string };
   private result?: RunResult;
-  private language: CodeLanguage = 'java';
+  private language = defaultLanguage;
   private code = '';
 
   constructor(private panel: HTMLElement, problemRoot: ParentNode, repository: Repository,
@@ -72,7 +72,8 @@ export class WorkspaceDrawer {
     const header = element('div', 'wb-drawer-heading');
     header.append(this.heading, this.closeButton);
     const tools = element('div', 'wb-case-tools');
-    tools.append(this.caseList, this.add, this.importSamples, this.remove);
+    this.reset.title = '현재 문제의 테스트 케이스를 백준 예제로 되돌립니다';
+    tools.append(this.caseList, this.add, this.reset, this.remove);
     const field = (title: string, textarea: HTMLTextAreaElement) => {
       const label = element('label', '', title);
       textarea.setAttribute('aria-label', title);
@@ -121,13 +122,12 @@ export class WorkspaceDrawer {
       const writer = this.cases.writer;
       if (writer) writer.update(writer.value.filter(item => item.id !== this.selected));
     });
-    this.importSamples.addEventListener('click', () => {
+    this.reset.addEventListener('click', () => {
       const writer = this.cases.writer;
       if (!writer) return;
-      const additions = readSamples(problemRoot).filter(sample => !writer.value.some(item =>
-        item.input === sample.input && item.expected === sample.expected));
-      if (additions.length) writer.update([...writer.value, ...additions.map(item =>
-        ({ ...item, id: crypto.randomUUID() }))].slice(0, MAX_CASES));
+      this.selected = '';
+      writer.update(readSamples(problemRoot));
+      void writer.flush();
     });
     this.handle.addEventListener('pointerdown', event => {
       if (!this.opened || this.drag || event.button !== 0) return;
@@ -243,10 +243,10 @@ export class WorkspaceDrawer {
     this.fields.hidden = !current;
     this.add.disabled = !this.cases.writer || items.length >= MAX_CASES;
     this.remove.disabled = !current;
-    this.importSamples.disabled = !this.cases.writer || items.length >= MAX_CASES;
+    this.reset.disabled = !this.cases.writer;
     this.empty.hidden = !!current;
     this.empty.textContent = this.cases.error ? '테스트 케이스를 불러오지 못했습니다. 상단의 재시도를 눌러 주세요.'
-      : !this.cases.writer ? '테스트 케이스 불러오는 중…' : '테스트 케이스가 없습니다. 예제를 가져오거나 새 케이스를 추가하세요.';
+      : !this.cases.writer ? '테스트 케이스 불러오는 중…' : '테스트 케이스가 없습니다. 새 케이스를 추가하거나 초기화를 눌러 주세요.';
   }
   setContext(language: CodeLanguage, code: string) {
     this.language = language;

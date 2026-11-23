@@ -63,12 +63,14 @@ Welcome Baek은 백준 온라인 저지(BOJ)의 문제 풀이 환경을 개선�
 **목표:** 기본적인 IDE 수준의 코드 작성 편의성 제공
 
 - [x] CodeMirror 6 통합
-- [x] Java, C++, Python 등 주요 언어 지원
+- [x] Java, C, C++, C#, Python, JavaScript 지원
 - [x] 언어별 Syntax Highlighting
 - [x] 자동 들여쓰기 및 괄호 자동 완성
 - [x] Tab 및 Enter 키 동작 지원
 - [x] GitHub Light / One Dark / Dracula 테마 제공
 - [ ] 폰트 크기, Tab 크기 등 에디터 설정
+
+언어 추가 시 `src/languages/`에서 메뉴 순서와 백준 제출 매핑(`catalog.ts`), 초기 코드(`templates.ts`), CodeMirror 문법 지원(`editor-support.ts`)을 관리합니다.
 
 ### Phase 4. 코드 자동 저장 및 복원
 

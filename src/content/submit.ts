@@ -1,5 +1,6 @@
+import { languages } from '../languages/catalog';
 import { prefillEditor } from '../submission/client';
-import { discardTransfer, languageTargets, readTransfer, transferParameter } from '../submission/transfer';
+import { discardTransfer, readTransfer, transferParameter } from '../submission/transfer';
 import { storageError } from '../storage/storage';
 
 const problemId = /^\/submit\/(\d+)\/?$/.exec(location.pathname)?.[1];
@@ -43,7 +44,7 @@ if (problemId && token && !document.querySelector('#welcome-baek-import')) {
       const result = await prefillEditor(snapshot, replaceExisting);
       if (result === 'applied') {
         panel.dataset.state = 'success';
-        message.textContent = `Welcome Baek: ${languageTargets[snapshot.language].label} 코드를 가져왔습니다. 공개 범위와 내용을 확인한 뒤 백준의 제출 버튼을 눌러 주세요.`;
+        message.textContent = `Welcome Baek: ${languages[snapshot.language].submission.label} 코드를 가져왔습니다. 공개 범위와 내용을 확인한 뒤 백준의 제출 버튼을 눌러 주세요.`;
         const url = new URL(location.href);
         url.searchParams.delete(transferParameter);
         // Do not apply the snapshot again when the user refreshes after editing.
@@ -55,7 +56,7 @@ if (problemId && token && !document.querySelector('#welcome-baek-import')) {
           message.textContent = 'Welcome Baek: 제출 화면에 이미 코드가 있습니다. 내용을 확인하고 가져오기 여부를 선택해 주세요.';
           replace.hidden = false;
         } else if (result === 'language-unavailable') {
-          message.textContent = `Welcome Baek: 현재 백준 언어 목록에 ${languageTargets[snapshot.language].label}이 없습니다. 언어 설정에서 추가한 뒤 이 페이지를 새로고침해 주세요.`;
+          message.textContent = `Welcome Baek: 현재 백준 언어 목록에 ${languages[snapshot.language].submission.label}이 없습니다. 언어 설정에서 추가한 뒤 이 페이지를 새로고침해 주세요.`;
           settings.hidden = retry.hidden = false;
         } else {
           message.textContent = result === 'timeout'

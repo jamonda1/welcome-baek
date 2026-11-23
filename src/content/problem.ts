@@ -1,10 +1,7 @@
 
-import {
-  createEditor,
-  templates,
-  type CodeLanguage,
-  type EditorTheme
-} from '../editor/editor';
+import { createEditor, type EditorTheme } from '../editor/editor';
+import { defaultLanguage, isCodeLanguage, languageOrder, languages, type CodeLanguage } from '../languages/catalog';
+import { templates } from '../languages/templates';
 import { Repository, storageError, type Preferences } from '../storage/storage';
 import { BufferedValue, Drafts } from '../storage/persistence';
 import { openSubmission, type SubmissionSnapshot } from '../submission/transfer';
@@ -21,7 +18,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   const drafts = new Drafts(repository, problemId, language => templates[language], renderStatus);
   const preferences = new Map<keyof Preferences, BufferedValue<Preferences[keyof Preferences]>>();
   let initialized = false;
-  let currentLanguage: CodeLanguage = 'java';
+  let currentLanguage = defaultLanguage;
   let loading = true;
   let loadError: unknown;
   let loadVersion = 0;
@@ -72,19 +69,10 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     '프로그래밍 언어 선택'
   );
 
-  const languages: {
-    value: CodeLanguage;
-    label: string;
-  }[] = [
-    { value: 'java', label: 'Java' },
-    { value: 'cpp', label: 'C++' },
-    { value: 'python', label: 'Python' }
-  ];
-
-  for (const language of languages) {
+  for (const language of languageOrder) {
     const option = document.createElement('option');
-    option.value = language.value;
-    option.textContent = language.label;
+    option.value = language;
+    option.textContent = languages[language].label;
     languageSelect.appendChild(option);
   }
 
@@ -458,7 +446,8 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   }
 
   languageSelect.addEventListener('change', () => {
-    const language = languageSelect.value as CodeLanguage;
+    const language = languageSelect.value;
+    if (!isCodeLanguage(language)) return;
     // The outgoing writer keeps its own key and in-memory draft even if saving fails.
     void flushAll();
     setPreference('language', language);

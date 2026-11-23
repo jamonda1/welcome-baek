@@ -1,4 +1,4 @@
-import type { CodeLanguage } from '../editor/editor';
+import type { CodeLanguage } from '../languages/catalog';
 import { Repository } from './storage';
 
 export type SaveState = 'ready' | 'pending' | 'saving' | 'saved' | 'error';

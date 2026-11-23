@@ -77,14 +77,14 @@ describe('problem test cases', () => {
   });
 });
 
-async function fixture() {
+async function fixture(seed: Record<string, unknown> = {}) {
   document.body.innerHTML = '<aside id="welcome-baek-panel"><div id="welcome-baek-header"></div>' +
     '<div id="welcome-baek-editor"></div><div id="welcome-baek-footer"></div></aside>' +
     '<main><pre id="sample-input-1">1 2\n</pre><pre id="sample-output-1">3\n</pre></main>';
   const panel = document.querySelector<HTMLElement>('aside')!;
   const footer = document.querySelector<HTMLElement>('#welcome-baek-footer')!;
   Object.defineProperty(panel, 'clientHeight', { value: 700 });
-  const stored = storage();
+  const stored = storage(seed);
   const drawer = new WorkspaceDrawer(panel, document.querySelector('main')!, stored.repository, '1000', vi.fn());
   footer.before(drawer.root);
   footer.append(drawer.casesButton, drawer.resultsButton, drawer.runButton);
@@ -120,11 +120,9 @@ describe('shared bottom drawer', () => {
     expect(drawer.runButton.disabled).toBe(true);
     await drawer.cases.writer!.flush();
   });
-  it('adds/removes cases, imports samples without duplicates and saves with Ctrl+S', async () => {
+  it('adds and removes cases and saves with Ctrl+S', async () => {
     const { drawer, input, data, panel } = await fixture();
     drawer.casesButton.click();
-    panel.querySelector<HTMLButtonElement>('#welcome-baek-case-import')!.click();
-    expect(drawer.cases.writer!.value).toHaveLength(1);
     panel.querySelector<HTMLButtonElement>('#welcome-baek-case-add')!.click();
     input.value = 'custom';
     input.dispatchEvent(new Event('input'));
@@ -136,6 +134,43 @@ describe('shared bottom drawer', () => {
     panel.querySelector<HTMLButtonElement>('#welcome-baek-case-remove')!.click();
     expect(input.value).toBe(sample.input);
     await drawer.cases.writer!.flush();
+  });
+  it('replaces a full edited list with only the current problem samples and saves the reset', async () => {
+    const otherCases = [{ id: 'other', input: '7', expected: '8' }];
+    const edited = [{ ...sample, input: 'edited', expected: 'edited output' },
+      ...Array.from({ length: 49 }, (_, index) => ({ id: `custom-${index}`, input: 'custom', expected: '' }))];
+    const { drawer, input, data, panel, repository } = await fixture({
+      [caseKey('1000')]: edited, [caseKey('1001')]: otherCases
+    });
+    const problem = document.querySelector('main')!;
+    problem.insertAdjacentHTML('beforeend', '<pre id="sample-input-2">4 5</pre><pre id="sample-output-2">9</pre>');
+    drawer.casesButton.click();
+    panel.querySelectorAll<HTMLButtonElement>('.wb-case-list button')[49].click();
+    expect(input.value).toBe('custom');
+    const reset = panel.querySelector<HTMLButtonElement>('#welcome-baek-case-reset')!;
+    expect(reset.textContent).toBe('초기화');
+    expect(reset.disabled).toBe(false);
+    reset.click();
+    const originals = [sample, { id: 'sample-2', input: '4 5', expected: '9' }];
+    expect(drawer.cases.writer!.value).toEqual(originals);
+    expect(input.value).toBe(sample.input);
+    expect(panel.querySelector<HTMLTextAreaElement>('#welcome-baek-case-expected')!.value).toBe(sample.expected);
+    await ticks();
+    expect(data[caseKey('1000')]).toEqual(originals);
+    expect(data[caseKey('1001')]).toEqual(otherCases);
+    const reloaded = new TestCases(repository, '1000', () => [], vi.fn());
+    await reloaded.load();
+    expect(reloaded.writer!.value).toEqual(originals);
+  });
+  it('resets to an empty list when the problem has no examples', async () => {
+    const { drawer, input, data, panel } = await fixture({ [caseKey('1000')]: [sample] });
+    document.querySelector('main')!.replaceChildren();
+    drawer.casesButton.click();
+    panel.querySelector<HTMLButtonElement>('#welcome-baek-case-reset')!.click();
+    expect(drawer.cases.writer!.value).toEqual([]);
+    expect(input.disabled).toBe(true);
+    await ticks();
+    expect(data[caseKey('1000')]).toEqual([]);
   });
   it('keeps result snapshots after closing and marks changed code/language/cases as stale', async () => {
     const { drawer, input } = await fixture();

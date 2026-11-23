@@ -1,4 +1,5 @@
-import type { CodeLanguage, EditorTheme } from '../editor/editor';
+import type { EditorTheme } from '../editor/editor';
+import { defaultLanguage, isCodeLanguage, type CodeLanguage } from '../languages/catalog';
 
 export interface Preferences {
   language: CodeLanguage;
@@ -8,7 +9,7 @@ export interface Preferences {
 }
 
 export const defaults: Preferences = {
-  language: 'java', theme: 'github-light', problemRatio: 50, reversed: false
+  language: defaultLanguage, theme: 'github-light', problemRatio: 50, reversed: false
 };
 export const codeKey = (problemId: string, language: CodeLanguage) =>
   `welcome-baek:v1:code:${problemId}:${language}`;
@@ -63,7 +64,7 @@ export class Repository {
     const ratio = data[preferenceKey('problemRatio')];
     const reversed = data[preferenceKey('reversed')];
     return {
-      language: language === 'java' || language === 'cpp' || language === 'python' ? language : defaults.language,
+      language: isCodeLanguage(language) ? language : defaults.language,
       theme: theme === 'github-light' || theme === 'one-dark' || theme === 'dracula' ? theme : defaults.theme,
       problemRatio: typeof ratio === 'number' && Number.isFinite(ratio) ? Math.max(20, Math.min(80, ratio)) : defaults.problemRatio,
       reversed: typeof reversed === 'boolean' ? reversed : defaults.reversed

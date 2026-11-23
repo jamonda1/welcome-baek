@@ -12,53 +12,10 @@ import {
 import { tags as t } from '@lezer/highlight';
 import { oneDark } from '@codemirror/theme-one-dark';
 
-import { java } from '@codemirror/lang-java';
-import { cpp } from '@codemirror/lang-cpp';
-import { python } from '@codemirror/lang-python';
+import { defaultLanguage, type CodeLanguage } from '../languages/catalog';
+import { languageExtensions } from '../languages/editor-support';
 
-export type CodeLanguage = 'java' | 'cpp' | 'python';
 export type EditorTheme = 'github-light' | 'one-dark' | 'dracula';
-
-// ========================================
-// 언어별 기본 코드 템플릿
-// ========================================
-
-export const templates: Record<CodeLanguage, string> = {
-  java: `public class Main {
-    public static void main(String[] args) {
-        System.out.println("Welcome, Baekjoon!");
-    }
-}`,
-
-  cpp: `#include <iostream>
-using namespace std;
-
-int main() {
-    cout << "Welcome, Baekjoon!" << '\\n';
-    return 0;
-}`,
-
-  python: `def main():
-    print("Welcome, Baekjoon!")
-
-if __name__ == "__main__":
-    main()`
-};
-
-// ========================================
-// 언어별 CodeMirror 확장
-// ========================================
-
-function getLanguageExtension(language: CodeLanguage) {
-  switch (language) {
-    case 'java':
-      return java();
-    case 'cpp':
-      return cpp();
-    case 'python':
-      return python();
-  }
-}
 
 // ========================================
 // GitHub Light 스타일
@@ -82,12 +39,13 @@ const githubLight = [
       border: 'none'
     },
     '.cm-activeLine': {
-      backgroundColor: '#f6f8fa'
+      // CodeMirror paints the selection underneath the active line.
+      backgroundColor: '#818b9812'
     },
     '.cm-activeLineGutter': {
       backgroundColor: '#eaeef2'
     },
-    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+    '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
       backgroundColor: '#b6d7ff'
     }
   }, { dark: false }),
@@ -133,7 +91,7 @@ const dracula = [
     '.cm-activeLineGutter': {
       backgroundColor: '#44475a'
     },
-    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+    '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
       backgroundColor: '#44475a'
     }
   }, { dark: true }),
@@ -182,7 +140,7 @@ export function createEditor(parent: HTMLElement, options: {
     doc: code,
     extensions: [
       basicSetup,
-      getLanguageExtension(language),
+      languageExtensions[language],
       themeCompartment.of(getThemeExtension(theme)),
       indentUnit.of('    '),
       EditorState.tabSize.of(4),
@@ -205,7 +163,7 @@ export function createEditor(parent: HTMLElement, options: {
     ]
   });
   // Never expose a template before the storage read has succeeded.
-  const view = new EditorView({ state: makeState('java', '', false), parent });
+  const view = new EditorView({ state: makeState(defaultLanguage, '', false), parent });
   const saveShortcut = (event: KeyboardEvent) => {
     if (!view.hasFocus || event.altKey || event.shiftKey ||
         !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's') return;

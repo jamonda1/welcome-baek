@@ -48,6 +48,19 @@ describe('production submission scripts', () => {
     await run();
     expect(editor.getValue()).toBe('edited after import');
   });
+  it.each([
+    ['c', '75'],
+    ['csharp', '86'],
+    ['javascript', '17']
+  ])('passes %s through storage and the page bridge to BOJ language %s', async (languageId, submissionId) => {
+    const { language, editor, submitted } = submissionForm();
+    transferStorage({ [transferKey(token)]: { ...snapshot(), language: languageId } });
+    await run();
+    expect(status()).toContain('코드를 가져왔습니다');
+    expect(language.value).toBe(submissionId);
+    expect(editor.getValue()).toBe(code);
+    expect(submitted).not.toHaveBeenCalled();
+  });
   it('keeps existing code until the user clicks replace', async () => {
     const { editor } = submissionForm('keep this until confirmed');
     const { records } = transferStorage({ [transferKey(token)]: snapshot() });
