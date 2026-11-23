@@ -1,0 +1,24 @@
+name: Main release gate
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, edited]
+
+permissions: {}
+
+jobs:
+  release-branch:
+    name: Release branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check release PR source
+        env:
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPOSITORY: ${{ github.repository }}
+        run: |
+          if [[ "$HEAD_REPOSITORY" != "$BASE_REPOSITORY" || "$HEAD_BRANCH" != release/?* ]]; then
+            echo "::error::Open a pull request from a release/* branch in this repository to merge into main."
+            exit 1
+          fi
