@@ -53,6 +53,7 @@
     if (['github-light','one-dark','dracula'].includes(query.get('theme'))) records['welcome-baek:v1:preference:theme'] = query.get('theme');
     if (query.has('ratio')) records['welcome-baek:v1:preference:problemRatio'] = Number(query.get('ratio'));
     window.chrome = window.chrome || {};
+    chrome.runtime = { getURL: path => new URL(path, location.origin).href };
     chrome.storage = { local: {
       get: async keys => { if (query.get('fail') === 'read') throw new Error('미리보기용 읽기 실패'); return structuredClone(keys === null ? records : Object.fromEntries(keys.filter(key => key in records).map(key => [key, records[key]]))); },
       set: async values => { if (query.get('fail') === 'save') throw new Error('QUOTA_BYTES exceeded'); Object.assign(records, structuredClone(values)); localStorage.setItem(key, JSON.stringify(records)); },

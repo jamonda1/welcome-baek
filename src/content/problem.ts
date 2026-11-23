@@ -1,11 +1,12 @@
 
 import { createEditor, type EditorTheme } from '../editor/editor';
+import { javaRunnerAvailable, runJava } from '../java/client';
 import { defaultLanguage, isCodeLanguage, languageOrder, languages, type CodeLanguage } from '../languages/catalog';
 import { templates } from '../languages/templates';
 import { Repository, storageError, type Preferences } from '../storage/storage';
 import { BufferedValue, Drafts } from '../storage/persistence';
 import { openSubmission, type SubmissionSnapshot } from '../submission/transfer';
-import { WorkspaceDrawer } from '../testing/drawer';
+import { WorkspaceDrawer, type CaseResult } from '../testing/drawer';
 
 const main = document.querySelector<HTMLElement>(
   '.container.content'
@@ -25,6 +26,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   let previousStatus = '';
   let compactSaved = false;
   let statusTimer: ReturnType<typeof setTimeout> | undefined;
+  let runningJava = false;
   let preparingSubmission = false;
   let submissionNoticeTimer: ReturnType<typeof setTimeout> | undefined;
   // ========================================
@@ -382,6 +384,12 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     swapButton.disabled = !initialized;
     divider.tabIndex = initialized ? 0 : -1;
     divider.setAttribute('aria-disabled', String(!initialized));
+    const canRunJava = currentLanguage === 'java' && javaRunnerAvailable();
+    drawer.runButton.disabled = !canRunJava || loading || runningJava ||
+      !drawer.cases.writer?.value.length || !editor.view.state.doc.toString().trim();
+    drawer.runButton.textContent = runningJava ? 'Java 실행 중…' : '▷ 코드 실행';
+    drawer.runButton.title = !canRunJava ? '현재 로컬 실행은 Java만 지원합니다'
+      : '선택한 테스트 케이스를 Java 11로 실행합니다';
     submitButton.disabled = loading || !initialized || preparingSubmission || !editor.view.state.doc.toString().trim();
     submitButton.title = !editor.view.state.doc.toString().trim()
       ? '코드를 작성하면 제출 페이지로 이동할 수 있습니다' : '현재 코드를 새 탭의 백준 제출 화면으로 가져오기';
@@ -467,6 +475,33 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     if (!initialized) void initialize();
     else if (loadError) void showLanguage(currentLanguage);
   });
+  drawer.runButton.addEventListener('click', async () => {
+    if (drawer.runButton.disabled) return;
+    const cases = structuredClone(drawer.cases.writer!.value);
+    const index = drawer.selectedCaseIndex;
+    const selected = cases[index];
+    if (!selected) return;
+    const code = editor.view.state.doc.toString();
+    runningJava = true;
+    renderStatus();
+    try {
+      const result = await runJava({ source: code, input: selected.input });
+      const normalize = (value: string) => value.replace(/\r\n/g, '\n').trimEnd();
+      const verdict = result.error ? 'error' : selected.expected === '' ? 'output'
+        : normalize(result.output) === normalize(selected.expected) ? 'passed' : 'failed';
+      drawer.setResult({ language: 'java', code, cases, results: [
+        { ...result, verdict, input: selected.input, expected: selected.expected, label: `케이스 ${index + 1}` }
+      ] });
+    } catch (error) {
+      const result: CaseResult = { verdict: 'error', output: '', input: selected.input, expected: selected.expected,
+        label: `케이스 ${index + 1}`, error: error instanceof Error ? error.message : 'Java 실행 환경을 열지 못했습니다.' };
+      drawer.setResult({ language: 'java', code, cases, results: [result] });
+    } finally {
+      runningJava = false;
+      renderStatus();
+    }
+  });
+
   submitButton.addEventListener('click', () => {
     if (loading || preparingSubmission || !initialized) return;
     const draft = drafts.entries.get(currentLanguage);

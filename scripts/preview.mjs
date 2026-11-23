@@ -4,7 +4,13 @@ import { readFile } from 'node:fs/promises';
 const files = new Map([
   ['/problem/1000', ['../preview/index.html', 'text/html; charset=utf-8']],
   ['/layout.css', ['../dist/layout.css', 'text/css; charset=utf-8']],
-  ['/problem.js', ['../dist/problem.js', 'text/javascript; charset=utf-8']]
+  ['/problem.js', ['../dist/problem.js', 'text/javascript; charset=utf-8']],
+  ['/java-sandbox.html', ['../dist/java-sandbox.html', 'text/html; charset=utf-8']],
+  ['/java-sandbox.js', ['../dist/java-sandbox.js', 'text/javascript; charset=utf-8']],
+  ['/java/jdk-11.zip', ['../dist/java/jdk-11.zip', 'application/zip']],
+  ['/java/runner.core.wasm', ['../dist/java/runner.core.wasm', 'application/wasm']],
+  ['/java/runner.core2.wasm', ['../dist/java/runner.core2.wasm', 'application/wasm']],
+  ['/java/runner.core3.wasm', ['../dist/java/runner.core3.wasm', 'application/wasm']]
 ]);
 const port = Number(process.env.WELCOME_BAEK_PREVIEW_PORT ?? 4318);
 createServer(async (request, response) => {

@@ -1,0 +1,22 @@
+diff --git a/web/runner/src/lib.rs b/web/runner/src/lib.rs
+index 407f0f8..83b1bd1 100644
+--- a/web/runner/src/lib.rs
++++ b/web/runner/src/lib.rs
+@@ -45,6 +45,8 @@ struct Request {
+     class_name: String,
+     source: String,
+     #[serde(default)]
++    stdin: String,
++    #[serde(default)]
+     language: Language,
+     #[serde(default)]
+     scala_version: Option<String>,
+@@ -196,6 +198,8 @@ async fn execute(
+             .class_path(ClassPath::new(vec![ClassPathEntry::Memory(memory)]))
+             .build()?;
+         let vm = VM::new(config).await?;
++        let input = vm.object("java.io.ByteArrayInputStream", "[B", &[request.stdin.as_bytes().to_vec()]).await?;
++        vm.invoke("java.lang.System", "setIn(Ljava/io/InputStream;)V", &[input]).await?;
+         if let Err(error) = vm.invoke_main(&[] as &[&str]).await {
+             return report_vm_error(id, &vm, error).await;
+         }

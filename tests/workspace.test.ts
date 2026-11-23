@@ -172,6 +172,23 @@ describe('shared bottom drawer', () => {
     await ticks();
     expect(data[caseKey('1000')]).toEqual([]);
   });
+  it('renders each result in its own expandable card with a case badge and verdict', async () => {
+    const { drawer, panel } = await fixture();
+    drawer.setResult({ language: 'java', code: '', cases: [sample], results: [
+      { label: '케이스 1', input: '1 2', expected: '3', output: '4', verdict: 'failed' },
+      { label: '케이스 2', input: '4 5', expected: '9', output: '9', verdict: 'passed' },
+      { label: '케이스 3', input: '0', expected: '0', output: '', error: '실행 시간 초과', verdict: 'error' }
+    ] });
+    const cards = Array.from(panel.querySelectorAll<HTMLDetailsElement>('.wb-result-list > details'));
+    expect(cards.map(card => card.dataset.verdict)).toEqual(['failed', 'passed', 'error']);
+    expect(cards.map(card => card.querySelector('.wb-result-badge')!.textContent)).toEqual(['케이스 1', '케이스 2', '케이스 3']);
+    expect(cards.map(card => card.querySelector('.wb-result-verdict')!.textContent)).toEqual(['실패', '통과', '오류']);
+    cards[0].querySelector('summary')!.click();
+    expect(cards.map(card => card.open)).toEqual([true, false, false]);
+    expect(Array.from(cards[0].querySelectorAll('pre'), block => block.textContent)).toEqual(['1 2', '3', '4']);
+    expect(cards[2].querySelector('pre:last-child')).not.toBeNull();
+    expect(cards[2].textContent).toContain('실행 시간 초과');
+  });
   it('keeps result snapshots after closing and marks changed code/language/cases as stale', async () => {
     const { drawer, input } = await fixture();
     drawer.setContext('java', 'code');

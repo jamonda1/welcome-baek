@@ -1,3 +1,4 @@
+import { readFile, rm } from 'node:fs/promises';
 import { build } from 'vite';
 
 await build();
@@ -21,3 +22,20 @@ for (const name of ['submit', 'submit-bridge']) {
     }
   });
 }
+
+// The sandbox uses a blob Worker so the Java process has the sandbox's opaque origin.
+const javaWorkerPath = 'dist/java-worker.js';
+const javaBundle = (entry, filename, define) => build({
+  configFile: false,
+  publicDir: false,
+  define,
+  build: {
+    outDir: 'dist', emptyOutDir: false, target: 'chrome111', minify: 'oxc',
+    lib: { entry, formats: ['iife'], name: 'WelcomeBaekJava', fileName: () => filename }
+  }
+});
+await javaBundle('src/java/worker.ts', 'java-worker.js');
+await javaBundle('src/java/sandbox.ts', 'java-sandbox.js', {
+  __WELCOME_BAEK_JAVA_WORKER__: JSON.stringify(await readFile(javaWorkerPath, 'utf8'))
+});
+await rm(javaWorkerPath);

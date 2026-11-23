@@ -97,8 +97,6 @@ export class WorkspaceDrawer {
       });
     }
     this.runButton.disabled = true;
-    this.runButton.title = '코드 실행 기능은 준비 중입니다';
-    this.runButton.setAttribute('aria-label', '코드 실행 (준비 중)');
     this.closeButton.addEventListener('click', () => this.close());
     this.root.addEventListener('keydown', event => {
       if (event.key === 'Escape') { event.preventDefault(); this.close(); }
@@ -248,12 +246,14 @@ export class WorkspaceDrawer {
     this.empty.textContent = this.cases.error ? '테스트 케이스를 불러오지 못했습니다. 상단의 재시도를 눌러 주세요.'
       : !this.cases.writer ? '테스트 케이스 불러오는 중…' : '테스트 케이스가 없습니다. 새 케이스를 추가하거나 초기화를 눌러 주세요.';
   }
+  get selectedCaseIndex(): number {
+    return this.cases.writer?.value.findIndex(item => item.id === this.selected) ?? -1;
+  }
   setContext(language: CodeLanguage, code: string) {
     this.language = language;
     this.code = code;
     this.renderResults();
   }
-  /** Called only by a future execution adapter, never by page messages or demo code. */
   setResult(result: RunResult) {
     this.result = structuredClone(result);
     this.renderResults();
@@ -262,7 +262,7 @@ export class WorkspaceDrawer {
   private renderResults() {
     if (!this.result) {
       this.resultsBody.replaceChildren(element('p', 'wb-empty', '아직 실행 결과가 없습니다.'),
-        element('p', 'wb-muted', '코드 실행 기능은 준비 중입니다.'));
+        element('p', 'wb-muted', 'Java를 선택하고 테스트 케이스를 실행하세요.'));
       return;
     }
     const result = this.result;
@@ -270,18 +270,25 @@ export class WorkspaceDrawer {
       JSON.stringify(result.cases) !== JSON.stringify(this.cases.writer?.value ?? []);
     const notice = element('p', 'wb-result-notice', stale
       ? '코드·언어 또는 테스트 케이스가 변경되었습니다. 이전 실행 결과입니다.' : '마지막 실행 결과');
-    const rows = result.results.map(row => {
-      const details = element('details', 'wb-result');
-      const names = { passed: '통과', failed: '실패', error: '오류', output: '출력 확인' };
-      const summary = element('summary', '', `${row.label} · ${names[row.verdict]}`);
-      summary.dataset.verdict = row.verdict;
-      details.append(summary);
+    const list = element('div', 'wb-result-list');
+    const names = { passed: '통과', failed: '실패', error: '오류', output: '출력 확인' };
+    for (const row of result.results) {
+      const card = element('details', 'wb-result');
+      card.dataset.verdict = row.verdict;
+      const summary = element('summary', 'wb-result-summary');
+      summary.append(element('span', 'wb-result-badge', row.label), ' ',
+        element('span', 'wb-result-verdict', names[row.verdict]));
+
+      const content = element('div', 'wb-result-content');
       for (const [name, value] of [['입력값', row.input], ['예상 출력', row.expected], ['실제 출력', row.output],
         ...(row.error ? [['오류 내용', row.error]] : [])]) {
-        details.append(element('strong', '', name), element('pre', '', value));
+        const field = element('div');
+        field.append(element('strong', '', name), element('pre', '', value));
+        content.append(field);
       }
-      return details;
-    });
-    this.resultsBody.replaceChildren(notice, ...rows);
+      card.append(summary, content);
+      list.append(card);
+    }
+    this.resultsBody.replaceChildren(notice, list);
   }
 }
