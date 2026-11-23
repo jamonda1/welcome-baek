@@ -1,25 +1,234 @@
 
 import { basicSetup } from 'codemirror';
-import { EditorState } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
-import { java } from '@codemirror/lang-java';
+import { Compartment, EditorState } from '@codemirror/state';
+import { EditorView, keymap } from '@codemirror/view';
+import { indentMore, indentLess } from '@codemirror/commands';
+import {
+  indentUnit,
+  HighlightStyle,
+  syntaxHighlighting
+} from '@codemirror/language';
 
-export function createEditor(parent: HTMLElement): EditorView {
-  const state = EditorState.create({
-    doc: `public class Main {
+import { tags as t } from '@lezer/highlight';
+import { oneDark } from '@codemirror/theme-one-dark';
+
+import { java } from '@codemirror/lang-java';
+import { cpp } from '@codemirror/lang-cpp';
+import { python } from '@codemirror/lang-python';
+
+export type CodeLanguage = 'java' | 'cpp' | 'python';
+export type EditorTheme = 'github-light' | 'one-dark' | 'dracula';
+
+// ========================================
+// 언어별 기본 코드 템플릿
+// ========================================
+
+export const templates: Record<CodeLanguage, string> = {
+  java: `public class Main {
     public static void main(String[] args) {
-        System.out.println("Hello, Baekjoon!");
+        System.out.println("Welcome, Baekjoon!");
     }
 }`,
+
+  cpp: `#include <iostream>
+using namespace std;
+
+int main() {
+    cout << "Welcome, Baekjoon!" << '\\n';
+    return 0;
+}`,
+
+  python: `def main():
+    print("Welcome, Baekjoon!")
+
+if __name__ == "__main__":
+    main()`
+};
+
+// ========================================
+// 언어별 CodeMirror 확장
+// ========================================
+
+function getLanguageExtension(language: CodeLanguage) {
+  switch (language) {
+    case 'java':
+      return java();
+    case 'cpp':
+      return cpp();
+    case 'python':
+      return python();
+  }
+}
+
+// ========================================
+// GitHub Light 스타일
+// ========================================
+
+const githubLight = [
+  EditorView.theme({
+    '&': {
+      backgroundColor: '#ffffff',
+      color: '#24292f'
+    },
+    '.cm-content': {
+      caretColor: '#0969da'
+    },
+    '.cm-cursor, .cm-dropCursor': {
+      borderLeftColor: '#0969da'
+    },
+    '.cm-gutters': {
+      backgroundColor: '#f6f8fa',
+      color: '#8c959f',
+      border: 'none'
+    },
+    '.cm-activeLine': {
+      backgroundColor: '#f6f8fa'
+    },
+    '.cm-activeLineGutter': {
+      backgroundColor: '#eaeef2'
+    },
+    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+      backgroundColor: '#b6d7ff'
+    }
+  }, { dark: false }),
+
+  syntaxHighlighting(HighlightStyle.define([
+    { tag: t.keyword, color: '#cf222e' },
+    { tag: t.controlKeyword, color: '#cf222e' },
+    { tag: t.operatorKeyword, color: '#cf222e' },
+    { tag: t.string, color: '#0a3069' },
+    { tag: t.number, color: '#0550ae' },
+    { tag: t.bool, color: '#0550ae' },
+    { tag: t.comment, color: '#6e7781' },
+    { tag: t.typeName, color: '#8250df' },
+    { tag: t.className, color: '#8250df' },
+    { tag: t.function(t.variableName), color: '#8250df' }
+  ]))
+];
+
+// ========================================
+// Dracula 스타일
+// ========================================
+
+const dracula = [
+  EditorView.theme({
+    '&': {
+      backgroundColor: '#282a36',
+      color: '#f8f8f2'
+    },
+    '.cm-content': {
+      caretColor: '#f8f8f2'
+    },
+    '.cm-cursor, .cm-dropCursor': {
+      borderLeftColor: '#f8f8f2'
+    },
+    '.cm-gutters': {
+      backgroundColor: '#282a36',
+      color: '#6272a4',
+      border: 'none'
+    },
+    '.cm-activeLine': {
+      backgroundColor: '#44475a55'
+    },
+    '.cm-activeLineGutter': {
+      backgroundColor: '#44475a'
+    },
+    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+      backgroundColor: '#44475a'
+    }
+  }, { dark: true }),
+
+  syntaxHighlighting(HighlightStyle.define([
+    { tag: t.keyword, color: '#ff79c6' },
+    { tag: t.controlKeyword, color: '#ff79c6' },
+    { tag: t.operatorKeyword, color: '#ff79c6' },
+    { tag: t.string, color: '#f1fa8c' },
+    { tag: t.number, color: '#bd93f9' },
+    { tag: t.bool, color: '#bd93f9' },
+    { tag: t.comment, color: '#6272a4' },
+    { tag: t.typeName, color: '#8be9fd' },
+    { tag: t.className, color: '#8be9fd' },
+    { tag: t.function(t.variableName), color: '#50fa7b' }
+  ]))
+];
+
+// ========================================
+// 테마 선택
+// ========================================
+
+function getThemeExtension(theme: EditorTheme) {
+  switch (theme) {
+    case 'github-light':
+      return githubLight;
+    case 'one-dark':
+      return oneDark;
+    case 'dracula':
+      return dracula;
+  }
+}
+
+// ========================================
+// CodeMirror 에디터 생성
+// ========================================
+
+export function createEditor(parent: HTMLElement, options: {
+  onChange: (code: string) => void;
+  onSave: () => void;
+}) {
+  const themeCompartment = new Compartment();
+  let theme: EditorTheme = 'github-light';
+
+  const makeState = (language: CodeLanguage, code: string, editable: boolean) => EditorState.create({
+    doc: code,
     extensions: [
       basicSetup,
-      java(),
+      getLanguageExtension(language),
+      themeCompartment.of(getThemeExtension(theme)),
+      indentUnit.of('    '),
+      EditorState.tabSize.of(4),
+      EditorState.readOnly.of(!editable),
+      EditorView.editable.of(editable),
+      EditorView.contentAttributes.of({ 'aria-label': '문제 풀이 코드' }),
+      EditorView.updateListener.of(update => {
+        if (update.docChanged) options.onChange(update.state.doc.toString());
+      }),
+      keymap.of([
+        { key: 'Tab', run: view => {
+          if (view.state.readOnly) return true;
+          if (view.state.selection.ranges.some(range => !range.empty)) return indentMore(view);
+          view.dispatch(view.state.replaceSelection('    '));
+          return true;
+        } },
+        { key: 'Shift-Tab', run: indentLess }
+      ]),
       EditorView.lineWrapping
     ]
   });
+  // Never expose a template before the storage read has succeeded.
+  const view = new EditorView({ state: makeState('java', '', false), parent });
+  const saveShortcut = (event: KeyboardEvent) => {
+    if (!view.hasFocus || event.altKey || event.shiftKey ||
+        !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's') return;
+    event.preventDefault();
+    event.stopPropagation();
+    options.onSave();
+  };
+  // Capture at the editor root, ahead of CodeMirror/browser default handlers.
+  view.dom.addEventListener('keydown', saveShortcut, true);
 
-  return new EditorView({
-    state,
-    parent
-  });
+  return {
+    view,
+    showDocument(language: CodeLanguage, code: string, editable = true) {
+      // A fresh state also keeps Undo from restoring another language's document.
+      view.setState(makeState(language, code, editable));
+    },
+    setTheme(next: EditorTheme) {
+      theme = next;
+      view.dispatch({ effects: themeCompartment.reconfigure(getThemeExtension(theme)) });
+    },
+    destroy() {
+      view.dom.removeEventListener('keydown', saveShortcut, true);
+      view.destroy();
+    }
+  };
 }

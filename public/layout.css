@@ -206,3 +206,79 @@
 #welcome-baek-editor .cm-scroller {
   overflow: auto;
 }
+
+/* 언어 및 테마 선택 메뉴 정렬 */
+#welcome-baek-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 테마 선택 메뉴 */
+#welcome-baek-theme,
+#welcome-baek-language,
+#welcome-baek-retry {
+  width: 145px;
+  height: 36px;
+  padding: 0 10px;
+
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #dbe2ea;
+  border-radius: 6px;
+
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#welcome-baek-retry { width: auto; }
+
+#welcome-baek-save-info {
+  display: flex;
+  flex: 1 0 100%;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+#welcome-baek-save-hint {
+  color: #64748b;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+#welcome-baek-save-status {
+  flex: 1 1 140px;
+  min-width: 0;
+  min-height: 22px;
+  font-size: 13px;
+  text-align: right;
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+
+#welcome-baek-save-status[data-state="error"] {
+  flex: 1 1 100%;
+  color: #b91c1c;
+  text-align: left;
+}
+#welcome-baek-save-status[data-state="saved"] { color: #15803d; }
+#welcome-baek-retry[hidden] { display: none; }
+#welcome-baek-retry { margin-left: auto; }
+#welcome-baek-panel button:disabled,
+#welcome-baek-panel select:disabled { opacity: .6; cursor: wait; }
+
+/* 에디터 헤더 */
+#welcome-baek-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+#welcome-baek-header h2 {
+  margin: 0;
+}

@@ -62,24 +62,27 @@ Welcome Baek은 백준 온라인 저지(BOJ)의 문제 풀이 환경을 개선�
 
 **목표:** 기본적인 IDE 수준의 코드 작성 편의성 제공
 
-- [ ] CodeMirror 6 통합
-- [ ] Java, C++, Python 등 주요 언어 지원
-- [ ] 언어별 Syntax Highlighting
-- [ ] 자동 들여쓰기 및 괄호 자동 완성
-- [ ] Tab 및 Enter 키 동작 지원
-- [ ] Light / Dark 테마 및 추가 테마 제공
+- [x] CodeMirror 6 통합
+- [x] Java, C++, Python 등 주요 언어 지원
+- [x] 언어별 Syntax Highlighting
+- [x] 자동 들여쓰기 및 괄호 자동 완성
+- [x] Tab 및 Enter 키 동작 지원
+- [x] GitHub Light / One Dark / Dracula 테마 제공
 - [ ] 폰트 크기, Tab 크기 등 에디터 설정
 
 ### Phase 4. 코드 자동 저장 및 복원
 
 **목표:** 페이지 이동이나 세션 만료에도 코드 보존
 
-- [ ] Chrome Storage API 연동
-- [ ] 문제 번호별 코드 자동 저장
-- [ ] 프로그래밍 언어별 코드 구분 저장
-- [ ] 페이지 재방문 시 작성 코드 자동 복원
-- [ ] 새로고침 및 로그인 세션 만료 대응
-- [ ] 저장 데이터 관리 및 초기화 기능
+- [x] Chrome Storage API 연동 (`storage.local`)
+- [x] 문제 번호·언어별 코드 구분 저장 및 재방문 복원
+- [x] 마지막 수정 후 500ms 자동 저장
+- [x] 편집기 초점 내 Ctrl+S / Cmd+S 즉시 저장
+- [x] 언어·테마·문제 영역 비율·좌우 반전 저장 및 복원
+- [x] 읽기/쓰기 경쟁 상태 방지, 실패 안내·재시도, 미저장 이동 경고
+- [ ] 실제 Chrome 새 빌드 수동 검증 (아래 문서 참조)
+
+저장 데이터 관리·초기화 UI는 후속 범위입니다. 자세한 구현과 검증 절차는 [Phase 4 검증 문서](docs/PHASE4.md)를 참고하세요.
 
 ### Phase 5. 백준 코드 제출 연동
 
@@ -148,11 +151,12 @@ Welcome Baek은 백준 온라인 저지(BOJ)의 문제 풀이 환경을 개선�
 
 **Version:** 0.1.0
 
-**Current Phase:** Phase 1 — 기본 환경 구성
+**Current Phase:** Phase 4 — 저장·복원 구현 및 자동 검사 완료, Chrome 수동 확인 대기
 
-Chrome에 Welcome Baek을 로컬 설치하고 확장 프로그램 팝업이 정상적으로 표시되는 것을 확인했습니다.
+Phase 1~3의 에디터와 분할 화면에 문제·언어별 저장, 설정 복원, 저장 상태와 재시도를 연결했습니다.
+`npm run typecheck`, `npm run build`, `npm test`로 검증합니다. 자동 테스트는 먼저 빌드된 `dist`도 검사합니다.
 
-**Next Step:** TypeScript + Vite 개발 환경 구성 및 백준 문제 페이지에 Content Script 적용
+**Next Step:** [Windows Chrome 검증 절차](docs/PHASE4.md)에 따라 기존 Welcome Baek을 새로고침하고 문제 페이지에서 저장·복원을 확인합니다.
 
 ---
 
