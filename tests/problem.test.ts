@@ -50,7 +50,9 @@ describe('problem page integration', () => {
     expect(document.querySelector<HTMLElement>('#welcome-baek-panel')!.dataset.theme).toBe('dracula');
     expect(set).not.toHaveBeenCalled();
     expect(document.querySelector('#welcome-baek-save')).toBeNull();
-    expect(document.querySelector('#welcome-baek-footer #welcome-baek-save-status')).not.toBeNull();
+    expect(document.querySelector('#welcome-baek-controls #welcome-baek-save-status')).not.toBeNull();
+    expect(document.querySelector('#welcome-baek-language')!.nextElementSibling?.id).toBe('welcome-baek-save-info');
+    expect(document.querySelector('#welcome-baek-footer #welcome-baek-save-status')).toBeNull();
     expect(document.querySelector('#welcome-baek-footer #welcome-baek-submit')).not.toBeNull();
     expect(document.querySelector('#welcome-baek-save-hint')!.textContent).toContain('Ctrl+S');
   });

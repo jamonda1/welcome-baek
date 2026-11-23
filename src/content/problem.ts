@@ -114,7 +114,6 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     themeSelect.appendChild(option);
   }
 
-  controls.append(languageSelect, themeSelect);
   const submitButton = document.createElement('button');
   submitButton.id = 'welcome-baek-submit';
   submitButton.type = 'button';
@@ -145,8 +144,9 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   status.setAttribute('aria-atomic', 'true');
   status.title = '마지막 입력 0.5초 후 자동 저장 · Ctrl+S / ⌘+S로 즉시 저장';
   saveInfo.append(status, retryButton, saveHint);
+  controls.append(languageSelect, saveInfo, themeSelect);
   editorHeader.append(title, controls);
-  editorFooter.append(saveInfo, submitButton);
+  editorFooter.append(submitButton);
 
   // ========================================
   // CodeMirror 에디터 영역

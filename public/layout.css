@@ -87,7 +87,8 @@
   background: var(--wb-chrome);
 }
 #welcome-baek-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
   min-height: 43px;
@@ -110,7 +111,7 @@
   font-size: 12px;
   cursor: pointer;
 }
-#welcome-baek-panel #welcome-baek-language { margin-right: auto; font-weight: 600; }
+#welcome-baek-panel #welcome-baek-language { font-weight: 600; }
 #welcome-baek-panel #welcome-baek-theme { max-width: 142px; color: var(--wb-muted); }
 #welcome-baek-panel select:hover { background: var(--wb-hover); }
 #welcome-baek-swap {
@@ -159,6 +160,7 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px 12px;
   min-height: 48px;
@@ -168,7 +170,6 @@
 }
 #welcome-baek-save-info {
   display: flex;
-  flex: 1 1 150px;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 10px;
@@ -270,11 +271,10 @@
 }
 @container (max-width: 420px) {
   #welcome-baek-save-hint { display: none; }
-  #welcome-baek-controls { gap: 2px; padding-inline: 6px; }
-  #welcome-baek-panel #welcome-baek-theme { max-width: 118px; }
+  #welcome-baek-controls { grid-template-columns: auto minmax(0, 1fr); gap: 2px 6px; padding-inline: 6px; }
+  #welcome-baek-panel #welcome-baek-theme { grid-column: 1 / -1; justify-self: end; max-width: 118px; }
 }
 @container (max-width: 300px) {
-  #welcome-baek-save-info { flex-basis: 100%; }
   #welcome-baek-panel #welcome-baek-submit { width: 100%; }
   #welcome-baek-panel #welcome-baek-theme { max-width: 104px; }
 }
