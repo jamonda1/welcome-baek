@@ -1,4 +1,8 @@
 
+/* ========================================
+   Welcome Baek - Layout
+======================================== */
+
 /* 전체 분할 레이아웃 */
 #welcome-baek-layout {
   display: flex;
@@ -7,7 +11,10 @@
   align-items: stretch;
 }
 
-/* 기존 백준 문제 영역 */
+/* ========================================
+   백준 문제 영역
+======================================== */
+
 #welcome-baek-layout > .welcome-baek-problem {
   flex: 1 1 50%;
   width: auto !important;
@@ -18,12 +25,14 @@
   padding: 24px;
 }
 
-/* Welcome Baek 에디터 영역 */
+/* ========================================
+   Welcome Baek 에디터 영역
+======================================== */
+
 #welcome-baek-panel {
   flex: 1 1 50%;
   min-width: 0;
   box-sizing: border-box;
-  border-left: 2px solid #e5e7eb;
   background-color: #f8fafc;
   padding: 24px;
 }
@@ -36,4 +45,141 @@
 
 #welcome-baek-panel p {
   color: #64748b;
+}
+
+/* ========================================
+   화면 분할 비율
+======================================== */
+
+#welcome-baek-layout > .welcome-baek-problem,
+#welcome-baek-panel {
+  flex-basis: 0;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+/* ========================================
+   중앙 드래그 구분선
+======================================== */
+
+#welcome-baek-divider {
+  flex: 0 0 4px;
+  background-color: #dbe2ea;
+  cursor: col-resize;
+  position: relative;
+  touch-action: none;
+  z-index: 10;
+  transition: background-color 0.15s ease;
+}
+
+#welcome-baek-divider:hover,
+#welcome-baek-divider:active {
+  background-color: #94a3b8;
+}
+
+/* ========================================
+   중앙 Grip Handle
+======================================== */
+
+#welcome-baek-divider-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  width: 20px;
+  height: 52px;
+
+  display: grid;
+  grid-template-columns: repeat(2, 4px);
+  grid-auto-rows: 4px;
+  gap: 4px;
+  place-content: center;
+
+  background-color: #ffffff;
+  border: 1px solid #dbe2ea;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+
+  pointer-events: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+/* Grip Handle Hover */
+#welcome-baek-divider:hover #welcome-baek-divider-handle,
+#welcome-baek-divider:active #welcome-baek-divider-handle {
+  border-color: #94a3b8;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+/* ========================================
+   Grip Handle Dots (2열 x 3행)
+======================================== */
+
+.welcome-baek-divider-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+}
+
+/* ========================================
+   좌우 반전 버튼
+======================================== */
+
+#welcome-baek-swap {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: 36px;
+  height: 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+  margin: 0;
+
+  appearance: none;
+  background: #ffffff;
+  color: #64748b;
+  border: 1px solid #dbe2ea;
+  border-radius: 9px;
+
+  font-family: sans-serif;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 500;
+
+  cursor: pointer;
+  z-index: 2;
+
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+#welcome-baek-swap:hover {
+  background-color: #f1f5f9;
+  color: #334155;
+  border-color: #94a3b8;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+#welcome-baek-swap:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+}
+
+#welcome-baek-swap:active {
+  background-color: #e2e8f0;
 }
