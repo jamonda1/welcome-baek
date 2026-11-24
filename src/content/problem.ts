@@ -3,10 +3,11 @@ import { createEditor, type EditorTheme } from '../editor/editor';
 import { javaRunnerAvailable, runJavaBatch } from '../java/client';
 import { defaultLanguage, isCodeLanguage, languageOrder, languages, type CodeLanguage } from '../languages/catalog';
 import { templates } from '../languages/templates';
-import { Repository, storageError, type Preferences } from '../storage/storage';
+import { isExtensionContextInvalidated, Repository, storageError, type Preferences } from '../storage/storage';
 import { BufferedValue, Drafts } from '../storage/persistence';
 import { openSubmission, type SubmissionSnapshot } from '../submission/transfer';
 import { WorkspaceDrawer, type CaseResult } from '../testing/drawer';
+import { createRecoveryBanner } from './recovery-banner';
 
 const main = document.querySelector<HTMLElement>(
   '.container.content'
@@ -30,6 +31,8 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   let javaCaseIndex = 0;
   let javaCaseTotal = 0;
   let preparingSubmission = false;
+  let storageDisconnected = false;
+  let reloadingAfterCopy = false;
   let submissionNoticeTimer: ReturnType<typeof setTimeout> | undefined;
   // ========================================
   // 전체 분할 레이아웃
@@ -154,9 +157,18 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   executionStatus.hidden = true;
   editorContainer.append(executionStatus);
 
+  const recovery = createRecoveryBanner(getRecoveryCode, () => {
+    reloadingAfterCopy = true;
+    window.location.reload();
+    // The page or browser may cancel the requested reload.
+    setTimeout(() => { reloadingAfterCopy = false; }, 0);
+  });
+  editorHeader.append(recovery.root);
+  panel.append(editorHeader, editorContainer);
+
   const drawer = new WorkspaceDrawer(panel, main, repository, problemId, renderStatus);
   editorFooter.append(drawer.casesButton, drawer.resultsButton, drawer.runButton, submitButton);
-  panel.append(editorHeader, editorContainer, drawer.root, submitStatus, editorFooter);
+  panel.append(drawer.root, submitStatus, editorFooter);
 
   // ========================================
   // 중앙 구분선
@@ -362,8 +374,23 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   function allWriters() {
     return [...drafts.entries.values(), ...preferences.values(), ...(drawer.cases.writer ? [drawer.cases.writer] : [])];
   }
+  function getRecoveryCode(): string | undefined {
+    const unsaved = [...drafts.entries].filter(([, draft]) => draft.dirty);
+    if (unsaved.length > 1) {
+      return unsaved.map(([language, draft]) => '[' + languages[language].label + ']\n' + draft.value).join('\n\n');
+    }
+    return unsaved[0]?.[1].value ?? drafts.entries.get(currentLanguage)?.value;
+  }
+
   function renderStatus() {
     const writers = allWriters();
+    storageDisconnected ||= isExtensionContextInvalidated(loadError)
+      || isExtensionContextInvalidated(drawer.cases.error)
+      || writers.some(writer => isExtensionContextInvalidated(writer.error));
+    if (storageDisconnected) {
+      recovery.root.hidden = false;
+      recovery.refresh();
+    }
     const failed = writers.find(writer => writer.state === 'error');
     const saving = writers.some(writer => writer.state === 'saving');
     const pending = writers.some(writer => writer.dirty);
@@ -381,20 +408,21 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
       }
     }
     status.dataset.state = nextStatus;
-    status.textContent = loadError ? `불러오기 실패: ${storageError(loadError)}`
+    status.textContent = storageDisconnected ? '자동 저장 중단'
+      : loadError ? `불러오기 실패: ${storageError(loadError)}`
       : drawer.cases.error ? `테스트 케이스 불러오기 실패: ${storageError(drawer.cases.error)}`
       : failed ? `저장 실패 (코드·설정·테스트 케이스): ${storageError(failed.error)}`
       : loading ? '코드 불러오는 중…'
       : saving ? '저장 중…' : pending ? '변경 사항 있음'
       : nextStatus === 'saved' ? compactSaved ? '✓ 저장됨' : '✓ 저장되었습니다' : '자동 저장 사용 중';
-    retryButton.hidden = !loadError && !drawer.cases.error && !failed;
-    languageSelect.disabled = !initialized || runningJava;
+    retryButton.hidden = storageDisconnected || (!loadError && !drawer.cases.error && !failed);
+    languageSelect.disabled = !initialized || runningJava || storageDisconnected;
     themeSelect.disabled = !initialized;
     swapButton.disabled = !initialized;
     divider.tabIndex = initialized ? 0 : -1;
     divider.setAttribute('aria-disabled', String(!initialized));
     const canRunJava = currentLanguage === 'java' && javaRunnerAvailable();
-    drawer.runButton.disabled = !canRunJava || loading || runningJava ||
+    drawer.runButton.disabled = !canRunJava || loading || runningJava || storageDisconnected ||
       !drawer.cases.writer?.value.length || !editor.view.state.doc.toString().trim();
     drawer.runButton.textContent = runningJava ? javaCaseIndex
       ? `Java 실행 중… (${javaCaseIndex}/${javaCaseTotal})` : 'Java 컴파일 중…' : '▷ 코드 실행';
@@ -402,7 +430,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     drawer.runButton.setAttribute('aria-busy', String(runningJava));
     drawer.runButton.title = !canRunJava ? '현재 로컬 실행은 Java만 지원합니다'
       : '등록된 모든 테스트 케이스를 Java 11로 실행합니다';
-    submitButton.disabled = loading || !initialized || preparingSubmission || !editor.view.state.doc.toString().trim();
+    submitButton.disabled = loading || !initialized || preparingSubmission || storageDisconnected || !editor.view.state.doc.toString().trim();
     submitButton.title = !editor.view.state.doc.toString().trim()
       ? '코드를 작성하면 제출 페이지로 이동할 수 있습니다' : '현재 코드를 새 탭의 백준 제출 화면으로 가져오기';
     editorContainer.setAttribute('aria-busy', String(loading || runningJava));
@@ -471,7 +499,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   }
 
   languageSelect.addEventListener('change', () => {
-    if (runningJava) {
+    if (runningJava || storageDisconnected) {
       languageSelect.value = currentLanguage;
       return;
     }
@@ -544,7 +572,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   });
 
   submitButton.addEventListener('click', () => {
-    if (loading || preparingSubmission || !initialized) return;
+    if (loading || preparingSubmission || !initialized || storageDisconnected) return;
     const draft = drafts.entries.get(currentLanguage);
     if (!draft) return;
     // Capture code and language before asynchronous saves or another language switch.
@@ -579,6 +607,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   });
   window.addEventListener('pagehide', () => { void flushAll(); });
   window.addEventListener('beforeunload', event => {
+    if (reloadingAfterCopy && !drawer.cases.writer?.dirty) return;
     if (allWriters().some(writer => writer.dirty)) {
       void flushAll();
       event.preventDefault();

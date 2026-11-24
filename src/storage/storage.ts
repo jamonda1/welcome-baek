@@ -25,12 +25,16 @@ const local: StorageArea = {
   set: (items) => chrome.storage.local.set(items)
 };
 
+export function isExtensionContextInvalidated(error: unknown): boolean {
+  return /context invalidated/i.test(error instanceof Error ? error.message : String(error));
+}
+
 export function storageError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (/quota|QUOTA_BYTES|maximum.*bytes/i.test(message)) {
     return '저장 공간이 부족합니다. 코드를 복사해 보관하고 저장 공간을 확보한 뒤 재시도하세요.';
   }
-  if (/context invalidated/i.test(message)) {
+  if (isExtensionContextInvalidated(error)) {
     return '확장 프로그램이 다시 로드되었습니다. 코드를 복사해 보관한 뒤 페이지를 새로고침하세요.';
   }
   return `저장소 오류: ${message}. 재시도하세요. 작성한 코드는 현재 탭에 유지됩니다.`;

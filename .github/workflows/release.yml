@@ -1,0 +1,103 @@
+name: Chrome Web Store Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chrome-web-store-release
+  queue: max
+
+jobs:
+  package:
+    name: Build release package
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.22.2
+          package-manager-cache: false
+      - name: Verify release commit and version
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/main; then
+            echo '::error::The release tag must point to a commit on main.'
+            exit 1
+          fi
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+
+          const tag = process.env.GITHUB_REF_NAME;
+          assert.match(tag, /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/, 'Use a release tag like v1.1.0.');
+          const { version } = JSON.parse(readFileSync('public/manifest.json', 'utf8'));
+          assert.equal(tag, 'v' + version, 'The release tag and manifest version must match.');
+          NODE
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - name: Zip extension
+        working-directory: dist
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+
+          const { version } = JSON.parse(readFileSync('manifest.json', 'utf8'));
+          assert.equal(process.env.GITHUB_REF_NAME, 'v' + version, 'The built manifest version must match the tag.');
+          NODE
+          zip -qr "$RUNNER_TEMP/welcome-baek.zip" .
+      - uses: actions/upload-artifact@v6
+        with:
+          name: welcome-baek-${{ github.ref_name }}
+          path: ${{ runner.temp }}/welcome-baek.zip
+          if-no-files-found: error
+
+  publish:
+    name: Submit to Chrome Web Store
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: chrome-web-store
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.22.2
+          package-manager-cache: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: welcome-baek-${{ github.ref_name }}
+          path: ${{ runner.temp }}
+      - name: Authenticate to Google
+        id: google
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GOOGLE_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Submit package for review
+        env:
+          CWS_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
+          CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+          CWS_ITEM_ID: ${{ vars.CWS_ITEM_ID }}
+        run: node scripts/publish-chrome-web-store.mjs "$RUNNER_TEMP/welcome-baek.zip"

@@ -164,9 +164,14 @@ export class WorkspaceDrawer {
       if (next < 64) this.close();
       else { this.setHeight(next); this.rememberedHeight = this.height; }
     });
-    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => {
-      if (this.opened && !this.drag) this.setHeight(this.height);
-    }).observe(panel);
+    if (typeof ResizeObserver !== 'undefined') {
+      const resize = new ResizeObserver(() => {
+        if (this.opened && !this.drag) this.setHeight(this.height);
+      });
+      resize.observe(panel);
+      const header = panel.querySelector('#welcome-baek-header');
+      if (header) resize.observe(header);
+    }
     this.refreshCases();
     this.renderResults();
     this.sync();
