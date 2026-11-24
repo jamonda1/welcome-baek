@@ -1,0 +1,15 @@
+name: 기능 제안
+description: Welcome Baek에 추가하거나 개선했으면 하는 기능을 알려주세요.
+body:
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 원하는 기능
+      description: 어떤 기능을 추가하거나 개선하면 좋을지 적어주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: 필요한 이유
+      description: 어떤 상황에서 불편했는지, 또는 이 기능이 언제 도움이 될지 알려주세요.
