@@ -5,7 +5,17 @@ import { caseKey, type TestCase } from '../src/testing/cases';
 import type { JavaResult } from '../src/java/protocol';
 
 const { runJava } = vi.hoisted(() => ({ runJava: vi.fn() }));
-vi.mock('../src/java/client', () => ({ javaRunnerAvailable: () => true, runJava }));
+vi.mock('../src/java/client', () => ({ javaRunnerAvailable: () => true,
+  runJavaBatch: async (request: { source: string; inputs: string[] }, emit: (event: unknown) => void) => {
+    for (const [index, input] of request.inputs.entries()) {
+      emit({ type: 'start', index });
+      let result: JavaResult;
+      try { result = await runJava({ source: request.source, input }); }
+      catch (error) { result = { output: '', error: String(error) }; }
+      emit({ type: 'result', index, result });
+    }
+  }
+}));
 const ticks = async () => { for (let i = 0; i < 50; i++) await Promise.resolve(); };
 
 it('runs every snapshotted case sequentially, continues after errors and keeps the lock until all results are ready', async () => {

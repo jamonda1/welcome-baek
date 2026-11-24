@@ -1,0 +1,95 @@
+[
+  {
+    "inputs": [
+      "a",
+      "b",
+      "c"
+    ],
+    "results": [
+      {
+        "output": "1:clean:a\n"
+      },
+      {
+        "output": "1:clean:b\n"
+      },
+      {
+        "output": "1:clean:c\n"
+      }
+    ],
+    "metrics": {
+      "preparationMs": 180.5876,
+      "compileMs": 8706.161399999999,
+      "caseMs": [
+        3381.945300000001,
+        3436.8853,
+        3527.241900000001
+      ],
+      "totalMs": 19315.0285,
+      "cached": false
+    }
+  },
+  {
+    "inputs": [
+      "loop",
+      "good",
+      "throw",
+      "exit",
+      "after"
+    ],
+    "results": [
+      {
+        "output": "",
+        "error": "Java 실행 시간 초과 (5초)"
+      },
+      {
+        "output": "good\n"
+      },
+      {
+        "output": "",
+        "error": "Exception in thread \"main\" java.lang.IllegalArgumentException: expected failure\n\tat Main.main(Main.java:5)\njava.lang.Throwable: Object(class java/lang/IllegalArgumentException)"
+      },
+      {
+        "output": ""
+      },
+      {
+        "output": "after\n"
+      }
+    ],
+    "metrics": {
+      "preparationMs": 0.002300000000104774,
+      "compileMs": 7610.295299999998,
+      "caseMs": [
+        5075.344400000002,
+        3207.2472000000016,
+        3155.300199999998,
+        3176.278299999998,
+        3324.919399999999
+      ],
+      "totalMs": 25626.6271,
+      "cached": false
+    }
+  },
+  {
+    "inputs": [
+      "a",
+      "b"
+    ],
+    "results": [
+      {
+        "output": "",
+        "error": "/Main.java:1: error: ';' expected\npublic class Main { syntax error }\n                                ^\n1 error\nJava compilation failed"
+      },
+      {
+        "output": "",
+        "error": "/Main.java:1: error: ';' expected\npublic class Main { syntax error }\n                                ^\n1 error\nJava compilation failed"
+      }
+    ],
+    "metrics": {
+      "preparationMs": 0.0021999999953550287,
+      "compileMs": 5862.446799999998,
+      "caseMs": [],
+      "totalMs": 5940.177100000001,
+      "cached": false
+    }
+  }
+]

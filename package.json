@@ -7,7 +7,9 @@
     "test": "vitest run",
     "build": "tsc --noEmit && node scripts/build.mjs",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
-    "preview:ui": "node scripts/preview.mjs"
+    "preview:ui": "node scripts/preview.mjs",
+    "test:java": "node scripts/verify-java-runtime.mjs",
+    "benchmark:java": "node scripts/benchmark-java.mjs"
   },
   "repository": {
     "type": "git",

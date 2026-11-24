@@ -1,6 +1,6 @@
 
 import { createEditor, type EditorTheme } from '../editor/editor';
-import { javaRunnerAvailable, runJava } from '../java/client';
+import { javaRunnerAvailable, runJavaBatch } from '../java/client';
 import { defaultLanguage, isCodeLanguage, languageOrder, languages, type CodeLanguage } from '../languages/catalog';
 import { templates } from '../languages/templates';
 import { Repository, storageError, type Preferences } from '../storage/storage';
@@ -396,7 +396,8 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     const canRunJava = currentLanguage === 'java' && javaRunnerAvailable();
     drawer.runButton.disabled = !canRunJava || loading || runningJava ||
       !drawer.cases.writer?.value.length || !editor.view.state.doc.toString().trim();
-    drawer.runButton.textContent = runningJava ? `Java 실행 중… (${javaCaseIndex}/${javaCaseTotal})` : '▷ 코드 실행';
+    drawer.runButton.textContent = runningJava ? javaCaseIndex
+      ? `Java 실행 중… (${javaCaseIndex}/${javaCaseTotal})` : 'Java 컴파일 중…' : '▷ 코드 실행';
     drawer.runButton.dataset.running = String(runningJava);
     drawer.runButton.setAttribute('aria-busy', String(runningJava));
     drawer.runButton.title = !canRunJava ? '현재 로컬 실행은 Java만 지원합니다'
@@ -407,7 +408,8 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     editorContainer.setAttribute('aria-busy', String(loading || runningJava));
     editorContainer.dataset.running = String(runningJava);
     executionStatus.hidden = !runningJava;
-    if (runningJava) executionStatus.textContent = `Java 실행 중 (${javaCaseIndex}/${javaCaseTotal}) · 편집 잠금`;
+    if (runningJava) executionStatus.textContent = javaCaseIndex
+      ? `Java 실행 중 (${javaCaseIndex}/${javaCaseTotal}) · 편집 잠금` : 'Java 컴파일 중 · 편집 잠금';
     editor.setLocked(runningJava);
   }
 
@@ -505,26 +507,33 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     }));
     const normalize = (value: string) => value.replace(/\r\n/g, '\n').trimEnd();
     runningJava = true;
+    javaCaseIndex = 0;
     javaCaseTotal = cases.length;
     try {
+      renderStatus();
       drawer.setResult({ language: 'java', code, cases, results, running: true });
-      // Each case gets an independent execution. One failing case must not skip the rest.
-      for (const [index, testCase] of cases.entries()) {
-        javaCaseIndex = index + 1;
-        renderStatus();
+      await runJavaBatch({ source: code, inputs: cases.map(testCase => testCase.input) }, event => {
+        const index = event.index;
+        const testCase = cases[index];
         const snapshot = { input: testCase.input, expected: testCase.expected, label: `케이스 ${index + 1}` };
-        results[index] = { ...snapshot, output: '', verdict: 'running' };
-        drawer.setResult({ language: 'java', code, cases, results, running: true }, false);
-        try {
-          const result = await runJava({ source: code, input: testCase.input });
+        if (event.type === 'start') {
+          javaCaseIndex = index + 1;
+          renderStatus();
+          results[index] = { ...snapshot, output: '', verdict: 'running' };
+        } else {
+          const result = event.result;
           const verdict = result.error ? 'error' : testCase.expected === '' ? 'output'
             : normalize(result.output) === normalize(testCase.expected) ? 'passed' : 'failed';
           results[index] = { ...snapshot, ...result, verdict };
-        } catch (error) {
-          results[index] = { ...snapshot, verdict: 'error', output: '',
-            error: error instanceof Error ? error.message : 'Java 실행 환경을 열지 못했습니다.' };
         }
         drawer.setResult({ language: 'java', code, cases, results, running: true }, false);
+      });
+      drawer.setResult({ language: 'java', code, cases, results, running: false }, false);
+    } catch (error) {
+      for (const result of results) {
+        if (result.verdict !== 'queued' && result.verdict !== 'running') continue;
+        result.verdict = 'error';
+        result.error = error instanceof Error ? error.message : 'Java 실행 환경을 열지 못했습니다.';
       }
       drawer.setResult({ language: 'java', code, cases, results, running: false }, false);
     } finally {
