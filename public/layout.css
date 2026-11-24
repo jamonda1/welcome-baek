@@ -203,6 +203,7 @@
 #welcome-baek-swap:active { background: #dce6f5; }
 #welcome-baek-swap:disabled { opacity: .5; cursor: default; }
 #welcome-baek-editor {
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
   min-height: 160px;
@@ -219,6 +220,30 @@
 #welcome-baek-editor .cm-content { padding: 16px 0; }
 #welcome-baek-editor .cm-line { padding: 0 16px; }
 #welcome-baek-editor .cm-gutters { padding-right: 5px; }
+#welcome-baek-editor[data-running="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #6b728026;
+  pointer-events: none;
+}
+#welcome-baek-editor[data-running="true"] .cm-cursor { visibility: hidden; }
+#welcome-baek-execution-status {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 3;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  padding: 5px 9px;
+  border: 1px solid var(--wb-border);
+  border-radius: 999px;
+  background: var(--wb-chrome);
+  color: var(--wb-muted);
+  font-size: 11px;
+  pointer-events: none;
+}
 #welcome-baek-footer {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -278,6 +303,29 @@
   background: transparent; color: var(--wb-muted); font-size: 12px; cursor: pointer; }
 #welcome-baek-footer > button:hover { background: var(--wb-hover); }
 #welcome-baek-footer > button[data-active="true"] { color: var(--wb-accent); background: var(--wb-hover); font-weight: 600; }
+#welcome-baek-panel #welcome-baek-run[data-running="true"] {
+  opacity: 1;
+  background: var(--wb-hover);
+  color: var(--wb-accent);
+  cursor: progress;
+}
+#welcome-baek-run[data-running="true"]::before {
+  content: "";
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  box-sizing: border-box;
+  margin-right: 6px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -1px;
+  animation: wb-execution-spin 800ms linear infinite;
+}
+@keyframes wb-execution-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  #welcome-baek-run[data-running="true"]::before { animation: none; }
+}
 #welcome-baek-drawer { display: flex; flex-direction: column; flex: 0 0 auto; height: 0; min-height: 0;
   box-sizing: border-box; overflow: hidden; background: var(--wb-surface); transition: height 150ms ease; }
 #welcome-baek-drawer[data-dragging="true"] { transition: none; }
@@ -315,6 +363,23 @@
   font-size: 12px;
 }
 #welcome-baek-drawer .wb-result[data-verdict="passed"] { --wb-result-color: var(--wb-success); }
+#welcome-baek-drawer .wb-result[data-verdict="running"] { --wb-result-color: var(--wb-accent); }
+#welcome-baek-drawer .wb-result[data-verdict="running"] .wb-result-verdict::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  box-sizing: border-box;
+  vertical-align: -1px;
+  animation: wb-execution-spin 800ms linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  #welcome-baek-drawer .wb-result[data-verdict="running"] .wb-result-verdict::before { animation: none; }
+}
 #welcome-baek-drawer .wb-result:is([data-verdict="failed"], [data-verdict="error"]) { --wb-result-color: var(--wb-danger); }
 #welcome-baek-drawer .wb-result .wb-result-summary {
   display: flex;

@@ -189,6 +189,39 @@ describe('shared bottom drawer', () => {
     expect(cards[2].querySelector('pre:last-child')).not.toBeNull();
     expect(cards[2].textContent).toContain('실행 시간 초과');
   });
+  it('preserves expanded cards, focused summaries, scroll and closed panels during live updates', async () => {
+    const { drawer, panel } = await fixture();
+    const result: RunResult = { language: 'java', code: '', cases: [sample], running: true, results: [
+      { label: '케이스 1', input: '1 2', expected: '3', output: '3', verdict: 'passed' },
+      { label: '케이스 2', input: '2 3', expected: '5', output: '', verdict: 'running' },
+      { label: '케이스 3', input: '3 4', expected: '7', output: '', verdict: 'queued' }
+    ] };
+    drawer.setResult(result);
+    expect(Array.from(panel.querySelectorAll('.wb-result-verdict'), node => node.textContent))
+      .toEqual(['통과', '실행 중', '대기 중']);
+    const first = panel.querySelector<HTMLDetailsElement>('.wb-result')!;
+    const summary = first.querySelector('summary')!;
+    summary.click();
+    summary.focus();
+    const body = first.closest('.wb-drawer-body')!;
+    body.scrollTop = 50;
+    result.results[1] = { ...result.results[1], output: '5', verdict: 'passed' };
+    result.results[2].verdict = 'running';
+    drawer.setResult(result, false);
+    expect(panel.querySelector('.wb-result')).toBe(first);
+    expect(first.open).toBe(true);
+    expect(document.activeElement).toBe(summary);
+    expect(body.scrollTop).toBe(50);
+    expect(panel.querySelector('.wb-result-notice')!.textContent).toContain('2/3 완료');
+    drawer.close();
+    result.running = false;
+    result.results[2] = { ...result.results[2], output: '7', verdict: 'passed' };
+    drawer.setResult(result, false);
+    expect(drawer.root.getAttribute('aria-hidden')).toBe('true');
+    drawer.resultsButton.click();
+    expect(panel.querySelectorAll('.wb-result[data-verdict="passed"]')).toHaveLength(3);
+    expect(first.open).toBe(true);
+  });
   it('keeps result snapshots after closing and marks changed code/language/cases as stale', async () => {
     const { drawer, input } = await fixture();
     drawer.setContext('java', 'code');

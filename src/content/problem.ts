@@ -27,6 +27,8 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   let compactSaved = false;
   let statusTimer: ReturnType<typeof setTimeout> | undefined;
   let runningJava = false;
+  let javaCaseIndex = 0;
+  let javaCaseTotal = 0;
   let preparingSubmission = false;
   let submissionNoticeTimer: ReturnType<typeof setTimeout> | undefined;
   // ========================================
@@ -144,6 +146,13 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
 
   const editorContainer = document.createElement('div');
   editorContainer.id = 'welcome-baek-editor';
+  const executionStatus = document.createElement('div');
+  executionStatus.id = 'welcome-baek-execution-status';
+  executionStatus.setAttribute('role', 'status');
+  executionStatus.setAttribute('aria-live', 'polite');
+  executionStatus.textContent = 'Java 실행 중 · 편집 잠금';
+  executionStatus.hidden = true;
+  editorContainer.append(executionStatus);
 
   const drawer = new WorkspaceDrawer(panel, main, repository, problemId, renderStatus);
   editorFooter.append(drawer.casesButton, drawer.resultsButton, drawer.runButton, submitButton);
@@ -379,7 +388,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
       : saving ? '저장 중…' : pending ? '변경 사항 있음'
       : nextStatus === 'saved' ? compactSaved ? '✓ 저장됨' : '✓ 저장되었습니다' : '자동 저장 사용 중';
     retryButton.hidden = !loadError && !drawer.cases.error && !failed;
-    languageSelect.disabled = !initialized;
+    languageSelect.disabled = !initialized || runningJava;
     themeSelect.disabled = !initialized;
     swapButton.disabled = !initialized;
     divider.tabIndex = initialized ? 0 : -1;
@@ -387,13 +396,19 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     const canRunJava = currentLanguage === 'java' && javaRunnerAvailable();
     drawer.runButton.disabled = !canRunJava || loading || runningJava ||
       !drawer.cases.writer?.value.length || !editor.view.state.doc.toString().trim();
-    drawer.runButton.textContent = runningJava ? 'Java 실행 중…' : '▷ 코드 실행';
+    drawer.runButton.textContent = runningJava ? `Java 실행 중… (${javaCaseIndex}/${javaCaseTotal})` : '▷ 코드 실행';
+    drawer.runButton.dataset.running = String(runningJava);
+    drawer.runButton.setAttribute('aria-busy', String(runningJava));
     drawer.runButton.title = !canRunJava ? '현재 로컬 실행은 Java만 지원합니다'
-      : '선택한 테스트 케이스를 Java 11로 실행합니다';
+      : '등록된 모든 테스트 케이스를 Java 11로 실행합니다';
     submitButton.disabled = loading || !initialized || preparingSubmission || !editor.view.state.doc.toString().trim();
     submitButton.title = !editor.view.state.doc.toString().trim()
       ? '코드를 작성하면 제출 페이지로 이동할 수 있습니다' : '현재 코드를 새 탭의 백준 제출 화면으로 가져오기';
-    editorContainer.setAttribute('aria-busy', String(loading));
+    editorContainer.setAttribute('aria-busy', String(loading || runningJava));
+    editorContainer.dataset.running = String(runningJava);
+    executionStatus.hidden = !runningJava;
+    if (runningJava) executionStatus.textContent = `Java 실행 중 (${javaCaseIndex}/${javaCaseTotal}) · 편집 잠금`;
+    editor.setLocked(runningJava);
   }
 
   async function showLanguage(language: CodeLanguage) {
@@ -454,6 +469,10 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   }
 
   languageSelect.addEventListener('change', () => {
+    if (runningJava) {
+      languageSelect.value = currentLanguage;
+      return;
+    }
     const language = languageSelect.value;
     if (!isCodeLanguage(language)) return;
     // The outgoing writer keeps its own key and in-memory draft even if saving fails.
@@ -478,26 +497,39 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   drawer.runButton.addEventListener('click', async () => {
     if (drawer.runButton.disabled) return;
     const cases = structuredClone(drawer.cases.writer!.value);
-    const index = drawer.selectedCaseIndex;
-    const selected = cases[index];
-    if (!selected) return;
+    if (!cases.length) return;
     const code = editor.view.state.doc.toString();
+    const results: CaseResult[] = cases.map((testCase, index) => ({
+      label: `케이스 ${index + 1}`, input: testCase.input, expected: testCase.expected,
+      output: '', verdict: 'queued'
+    }));
+    const normalize = (value: string) => value.replace(/\r\n/g, '\n').trimEnd();
     runningJava = true;
-    renderStatus();
+    javaCaseTotal = cases.length;
     try {
-      const result = await runJava({ source: code, input: selected.input });
-      const normalize = (value: string) => value.replace(/\r\n/g, '\n').trimEnd();
-      const verdict = result.error ? 'error' : selected.expected === '' ? 'output'
-        : normalize(result.output) === normalize(selected.expected) ? 'passed' : 'failed';
-      drawer.setResult({ language: 'java', code, cases, results: [
-        { ...result, verdict, input: selected.input, expected: selected.expected, label: `케이스 ${index + 1}` }
-      ] });
-    } catch (error) {
-      const result: CaseResult = { verdict: 'error', output: '', input: selected.input, expected: selected.expected,
-        label: `케이스 ${index + 1}`, error: error instanceof Error ? error.message : 'Java 실행 환경을 열지 못했습니다.' };
-      drawer.setResult({ language: 'java', code, cases, results: [result] });
+      drawer.setResult({ language: 'java', code, cases, results, running: true });
+      // Each case gets an independent execution. One failing case must not skip the rest.
+      for (const [index, testCase] of cases.entries()) {
+        javaCaseIndex = index + 1;
+        renderStatus();
+        const snapshot = { input: testCase.input, expected: testCase.expected, label: `케이스 ${index + 1}` };
+        results[index] = { ...snapshot, output: '', verdict: 'running' };
+        drawer.setResult({ language: 'java', code, cases, results, running: true }, false);
+        try {
+          const result = await runJava({ source: code, input: testCase.input });
+          const verdict = result.error ? 'error' : testCase.expected === '' ? 'output'
+            : normalize(result.output) === normalize(testCase.expected) ? 'passed' : 'failed';
+          results[index] = { ...snapshot, ...result, verdict };
+        } catch (error) {
+          results[index] = { ...snapshot, verdict: 'error', output: '',
+            error: error instanceof Error ? error.message : 'Java 실행 환경을 열지 못했습니다.' };
+        }
+        drawer.setResult({ language: 'java', code, cases, results, running: true }, false);
+      }
+      drawer.setResult({ language: 'java', code, cases, results, running: false }, false);
     } finally {
       runningJava = false;
+      javaCaseIndex = javaCaseTotal = 0;
       renderStatus();
     }
   });

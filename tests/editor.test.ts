@@ -76,4 +76,43 @@ describe('CodeMirror regression and shortcuts', () => {
     expect(editor.view.state.doc.toString()).toBe('python code');
     expect(editor.view.state.facet(EditorState.readOnly)).toBe(false);
   });
+  it('locks editing without resetting the code, caret, Undo history or theme', () => {
+    const { editor, onChange } = setup();
+    editor.showDocument('java', 'code');
+    editor.view.dispatch({ changes: { from: 0, insert: 'edited ' }, selection: { anchor: 3 } });
+    onChange.mockClear();
+    editor.setLocked(true);
+    editor.setLocked(true);
+    editor.setTheme('one-dark');
+    expect(editor.view.state.readOnly).toBe(true);
+    expect(editor.view.state.facet(EditorView.editable)).toBe(false);
+    expect(editor.view.contentDOM.getAttribute('aria-readonly')).toBe('true');
+    editor.view.focus();
+    for (const shiftKey of [false, true]) {
+      editor.view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }));
+    }
+    expect(undo(editor.view)).toBe(false);
+    expect(editor.view.state.doc.toString()).toBe('edited code');
+    expect(editor.view.state.selection.main.anchor).toBe(3);
+    expect(onChange).not.toHaveBeenCalled();
+    editor.setLocked(false);
+    expect(editor.view.state.readOnly).toBe(false);
+    expect(editor.view.state.facet(EditorView.editable)).toBe(true);
+    expect(editor.view.contentDOM.getAttribute('aria-readonly')).toBe('false');
+    expect(editor.view.state.facet(EditorView.darkTheme)).toBe(true);
+    expect(undo(editor.view)).toBe(true);
+    expect(editor.view.state.doc.toString()).toBe('code');
+  });
+  it('does not unlock a document that is still loading or failed to load', () => {
+    const { editor } = setup();
+    editor.setLocked(true);
+    editor.setLocked(false);
+    expect(editor.view.state.readOnly).toBe(true);
+    editor.setLocked(true);
+    editor.showDocument('python', 'loaded while locked');
+    expect(editor.view.state.readOnly).toBe(true);
+    editor.setLocked(false);
+    expect(editor.view.state.readOnly).toBe(false);
+    expect(editor.view.state.doc.toString()).toBe('loaded while locked');
+  });
 });
