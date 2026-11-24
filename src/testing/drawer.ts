@@ -5,9 +5,9 @@ import { MAX_CASES, readSamples, TestCases, type TestCase } from './cases';
 type DrawerTab = 'cases' | 'results';
 export interface CaseResult {
   label: string; input: string; expected: string; output: string; error?: string;
-  verdict: 'passed' | 'failed' | 'error' | 'output';
+  verdict: 'queued' | 'running' | 'passed' | 'failed' | 'error' | 'output';
 }
-export interface RunResult { language: CodeLanguage; code: string; cases: TestCase[]; results: CaseResult[] }
+export interface RunResult { language: CodeLanguage; code: string; cases: TestCase[]; results: CaseResult[]; running?: boolean }
 
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = '') {
   const node = document.createElement(tag);
@@ -49,6 +49,10 @@ export class WorkspaceDrawer {
   private rememberedHeight = 0;
   private drag?: { pointer: number; startY: number; startHeight: number; userSelect: string };
   private result?: RunResult;
+  private resultNotice = element('p', 'wb-result-notice');
+  private resultList = element('div', 'wb-result-list');
+  private resultRows: { card: HTMLDetailsElement; badge: HTMLSpanElement; verdict: HTMLSpanElement;
+    content: HTMLDivElement; signature: string }[] = [];
   private language = defaultLanguage;
   private code = '';
 
@@ -60,6 +64,8 @@ export class WorkspaceDrawer {
       notify();
     });
     this.root.id = 'welcome-baek-drawer';
+    this.resultNotice.setAttribute('role', 'status');
+    this.resultNotice.setAttribute('aria-live', 'polite');
     this.root.setAttribute('aria-label', '테스트 케이스 및 실행 결과');
     this.handle.id = 'welcome-baek-drawer-handle';
     this.handle.tabIndex = 0;
@@ -158,9 +164,14 @@ export class WorkspaceDrawer {
       if (next < 64) this.close();
       else { this.setHeight(next); this.rememberedHeight = this.height; }
     });
-    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => {
-      if (this.opened && !this.drag) this.setHeight(this.height);
-    }).observe(panel);
+    if (typeof ResizeObserver !== 'undefined') {
+      const resize = new ResizeObserver(() => {
+        if (this.opened && !this.drag) this.setHeight(this.height);
+      });
+      resize.observe(panel);
+      const header = panel.querySelector('#welcome-baek-header');
+      if (header) resize.observe(header);
+    }
     this.refreshCases();
     this.renderResults();
     this.sync();
@@ -254,10 +265,14 @@ export class WorkspaceDrawer {
     this.code = code;
     this.renderResults();
   }
-  setResult(result: RunResult) {
+  setResult(result: RunResult, reveal = true) {
     this.result = structuredClone(result);
+    if (reveal) {
+      this.resultRows = [];
+      this.resultList.replaceChildren();
+    }
     this.renderResults();
-    this.open('results');
+    if (reveal) this.open('results');
   }
   private renderResults() {
     if (!this.result) {
@@ -268,27 +283,48 @@ export class WorkspaceDrawer {
     const result = this.result;
     const stale = result.language !== this.language || result.code !== this.code ||
       JSON.stringify(result.cases) !== JSON.stringify(this.cases.writer?.value ?? []);
-    const notice = element('p', 'wb-result-notice', stale
-      ? '코드·언어 또는 테스트 케이스가 변경되었습니다. 이전 실행 결과입니다.' : '마지막 실행 결과');
-    const list = element('div', 'wb-result-list');
-    const names = { passed: '통과', failed: '실패', error: '오류', output: '출력 확인' };
-    for (const row of result.results) {
-      const card = element('details', 'wb-result');
-      card.dataset.verdict = row.verdict;
-      const summary = element('summary', 'wb-result-summary');
-      summary.append(element('span', 'wb-result-badge', row.label), ' ',
-        element('span', 'wb-result-verdict', names[row.verdict]));
-
-      const content = element('div', 'wb-result-content');
-      for (const [name, value] of [['입력값', row.input], ['예상 출력', row.expected], ['실제 출력', row.output],
-        ...(row.error ? [['오류 내용', row.error]] : [])]) {
+    const complete = result.results.filter(row => row.verdict !== 'queued' && row.verdict !== 'running').length;
+    const progress = result.running ? `테스트 실행 중 · ${complete}/${result.results.length} 완료` : '마지막 실행 결과';
+    this.resultNotice.textContent = stale
+      ? `${progress} · 코드·언어 또는 테스트 케이스가 변경되었습니다. 이전 실행 결과입니다.` : progress;
+    if (this.resultList.parentElement !== this.resultsBody) {
+      this.resultsBody.replaceChildren(this.resultNotice, this.resultList);
+    }
+    const names = { queued: '대기 중', running: '실행 중', passed: '통과', failed: '실패', error: '오류', output: '출력 확인' };
+    result.results.forEach((row, index) => {
+      let record = this.resultRows[index];
+      if (!record) {
+        const card = element('details', 'wb-result');
+        const summary = element('summary', 'wb-result-summary');
+        const badge = element('span', 'wb-result-badge');
+        const verdict = element('span', 'wb-result-verdict');
+        const content = element('div', 'wb-result-content');
+        summary.append(badge, ' ', verdict);
+        card.append(summary, content);
+        this.resultList.append(card);
+        record = this.resultRows[index] = { card, badge, verdict, content, signature: '' };
+      }
+      const signature = JSON.stringify(row);
+      if (record.signature === signature) return;
+      record.signature = signature;
+      record.card.dataset.verdict = row.verdict;
+      record.card.setAttribute('aria-busy', String(row.verdict === 'running'));
+      record.badge.textContent = row.label;
+      record.verdict.textContent = names[row.verdict];
+      const pending = row.verdict === 'queued' || row.verdict === 'running';
+      const fields = [['입력값', row.input], ['예상 출력', row.expected],
+        ...(!pending ? [['실제 출력', row.output]] : []),
+        ...(row.error ? [['오류 내용', row.error]] : [])].map(([name, value]) => {
         const field = element('div');
         field.append(element('strong', '', name), element('pre', '', value));
-        content.append(field);
-      }
-      card.append(summary, content);
-      list.append(card);
+        return field;
+      });
+      // Keep the card and summary in place so expanded results, focus and scroll survive updates.
+      record.content.replaceChildren(...fields, ...(pending ? [element('p', 'wb-muted',
+        row.verdict === 'queued' ? '실행 순서를 기다리고 있습니다.' : '컴파일 및 실행 중입니다.')] : []));
+    });
+    while (this.resultRows.length > result.results.length) {
+      this.resultRows.pop()!.card.remove();
     }
-    this.resultsBody.replaceChildren(notice, list);
   }
 }

@@ -1,12 +1,13 @@
 
 import { createEditor, type EditorTheme } from '../editor/editor';
-import { javaRunnerAvailable, runJava } from '../java/client';
+import { javaRunnerAvailable, runJavaBatch } from '../java/client';
 import { defaultLanguage, isCodeLanguage, languageOrder, languages, type CodeLanguage } from '../languages/catalog';
 import { templates } from '../languages/templates';
-import { Repository, storageError, type Preferences } from '../storage/storage';
+import { isExtensionContextInvalidated, Repository, storageError, type Preferences } from '../storage/storage';
 import { BufferedValue, Drafts } from '../storage/persistence';
 import { openSubmission, type SubmissionSnapshot } from '../submission/transfer';
 import { WorkspaceDrawer, type CaseResult } from '../testing/drawer';
+import { createRecoveryBanner } from './recovery-banner';
 
 const main = document.querySelector<HTMLElement>(
   '.container.content'
@@ -27,7 +28,11 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   let compactSaved = false;
   let statusTimer: ReturnType<typeof setTimeout> | undefined;
   let runningJava = false;
+  let javaCaseIndex = 0;
+  let javaCaseTotal = 0;
   let preparingSubmission = false;
+  let storageDisconnected = false;
+  let reloadingAfterCopy = false;
   let submissionNoticeTimer: ReturnType<typeof setTimeout> | undefined;
   // ========================================
   // 전체 분할 레이아웃
@@ -144,10 +149,26 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
 
   const editorContainer = document.createElement('div');
   editorContainer.id = 'welcome-baek-editor';
+  const executionStatus = document.createElement('div');
+  executionStatus.id = 'welcome-baek-execution-status';
+  executionStatus.setAttribute('role', 'status');
+  executionStatus.setAttribute('aria-live', 'polite');
+  executionStatus.textContent = 'Java 실행 중 · 편집 잠금';
+  executionStatus.hidden = true;
+  editorContainer.append(executionStatus);
+
+  const recovery = createRecoveryBanner(getRecoveryCode, () => {
+    reloadingAfterCopy = true;
+    window.location.reload();
+    // The page or browser may cancel the requested reload.
+    setTimeout(() => { reloadingAfterCopy = false; }, 0);
+  });
+  editorHeader.append(recovery.root);
+  panel.append(editorHeader, editorContainer);
 
   const drawer = new WorkspaceDrawer(panel, main, repository, problemId, renderStatus);
   editorFooter.append(drawer.casesButton, drawer.resultsButton, drawer.runButton, submitButton);
-  panel.append(editorHeader, editorContainer, drawer.root, submitStatus, editorFooter);
+  panel.append(drawer.root, submitStatus, editorFooter);
 
   // ========================================
   // 중앙 구분선
@@ -353,8 +374,23 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   function allWriters() {
     return [...drafts.entries.values(), ...preferences.values(), ...(drawer.cases.writer ? [drawer.cases.writer] : [])];
   }
+  function getRecoveryCode(): string | undefined {
+    const unsaved = [...drafts.entries].filter(([, draft]) => draft.dirty);
+    if (unsaved.length > 1) {
+      return unsaved.map(([language, draft]) => '[' + languages[language].label + ']\n' + draft.value).join('\n\n');
+    }
+    return unsaved[0]?.[1].value ?? drafts.entries.get(currentLanguage)?.value;
+  }
+
   function renderStatus() {
     const writers = allWriters();
+    storageDisconnected ||= isExtensionContextInvalidated(loadError)
+      || isExtensionContextInvalidated(drawer.cases.error)
+      || writers.some(writer => isExtensionContextInvalidated(writer.error));
+    if (storageDisconnected) {
+      recovery.root.hidden = false;
+      recovery.refresh();
+    }
     const failed = writers.find(writer => writer.state === 'error');
     const saving = writers.some(writer => writer.state === 'saving');
     const pending = writers.some(writer => writer.dirty);
@@ -372,28 +408,37 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
       }
     }
     status.dataset.state = nextStatus;
-    status.textContent = loadError ? `불러오기 실패: ${storageError(loadError)}`
+    status.textContent = storageDisconnected ? '자동 저장 중단'
+      : loadError ? `불러오기 실패: ${storageError(loadError)}`
       : drawer.cases.error ? `테스트 케이스 불러오기 실패: ${storageError(drawer.cases.error)}`
       : failed ? `저장 실패 (코드·설정·테스트 케이스): ${storageError(failed.error)}`
       : loading ? '코드 불러오는 중…'
       : saving ? '저장 중…' : pending ? '변경 사항 있음'
       : nextStatus === 'saved' ? compactSaved ? '✓ 저장됨' : '✓ 저장되었습니다' : '자동 저장 사용 중';
-    retryButton.hidden = !loadError && !drawer.cases.error && !failed;
-    languageSelect.disabled = !initialized;
+    retryButton.hidden = storageDisconnected || (!loadError && !drawer.cases.error && !failed);
+    languageSelect.disabled = !initialized || runningJava || storageDisconnected;
     themeSelect.disabled = !initialized;
     swapButton.disabled = !initialized;
     divider.tabIndex = initialized ? 0 : -1;
     divider.setAttribute('aria-disabled', String(!initialized));
     const canRunJava = currentLanguage === 'java' && javaRunnerAvailable();
-    drawer.runButton.disabled = !canRunJava || loading || runningJava ||
+    drawer.runButton.disabled = !canRunJava || loading || runningJava || storageDisconnected ||
       !drawer.cases.writer?.value.length || !editor.view.state.doc.toString().trim();
-    drawer.runButton.textContent = runningJava ? 'Java 실행 중…' : '▷ 코드 실행';
+    drawer.runButton.textContent = runningJava ? javaCaseIndex
+      ? `Java 실행 중… (${javaCaseIndex}/${javaCaseTotal})` : 'Java 컴파일 중…' : '▷ 코드 실행';
+    drawer.runButton.dataset.running = String(runningJava);
+    drawer.runButton.setAttribute('aria-busy', String(runningJava));
     drawer.runButton.title = !canRunJava ? '현재 로컬 실행은 Java만 지원합니다'
-      : '선택한 테스트 케이스를 Java 11로 실행합니다';
-    submitButton.disabled = loading || !initialized || preparingSubmission || !editor.view.state.doc.toString().trim();
+      : '등록된 모든 테스트 케이스를 Java 11로 실행합니다';
+    submitButton.disabled = loading || !initialized || preparingSubmission || storageDisconnected || !editor.view.state.doc.toString().trim();
     submitButton.title = !editor.view.state.doc.toString().trim()
       ? '코드를 작성하면 제출 페이지로 이동할 수 있습니다' : '현재 코드를 새 탭의 백준 제출 화면으로 가져오기';
-    editorContainer.setAttribute('aria-busy', String(loading));
+    editorContainer.setAttribute('aria-busy', String(loading || runningJava));
+    editorContainer.dataset.running = String(runningJava);
+    executionStatus.hidden = !runningJava;
+    if (runningJava) executionStatus.textContent = javaCaseIndex
+      ? `Java 실행 중 (${javaCaseIndex}/${javaCaseTotal}) · 편집 잠금` : 'Java 컴파일 중 · 편집 잠금';
+    editor.setLocked(runningJava);
   }
 
   async function showLanguage(language: CodeLanguage) {
@@ -454,6 +499,10 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   }
 
   languageSelect.addEventListener('change', () => {
+    if (runningJava || storageDisconnected) {
+      languageSelect.value = currentLanguage;
+      return;
+    }
     const language = languageSelect.value;
     if (!isCodeLanguage(language)) return;
     // The outgoing writer keeps its own key and in-memory draft even if saving fails.
@@ -478,32 +527,52 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   drawer.runButton.addEventListener('click', async () => {
     if (drawer.runButton.disabled) return;
     const cases = structuredClone(drawer.cases.writer!.value);
-    const index = drawer.selectedCaseIndex;
-    const selected = cases[index];
-    if (!selected) return;
+    if (!cases.length) return;
     const code = editor.view.state.doc.toString();
+    const results: CaseResult[] = cases.map((testCase, index) => ({
+      label: `케이스 ${index + 1}`, input: testCase.input, expected: testCase.expected,
+      output: '', verdict: 'queued'
+    }));
+    const normalize = (value: string) => value.replace(/\r\n/g, '\n').trimEnd();
     runningJava = true;
-    renderStatus();
+    javaCaseIndex = 0;
+    javaCaseTotal = cases.length;
     try {
-      const result = await runJava({ source: code, input: selected.input });
-      const normalize = (value: string) => value.replace(/\r\n/g, '\n').trimEnd();
-      const verdict = result.error ? 'error' : selected.expected === '' ? 'output'
-        : normalize(result.output) === normalize(selected.expected) ? 'passed' : 'failed';
-      drawer.setResult({ language: 'java', code, cases, results: [
-        { ...result, verdict, input: selected.input, expected: selected.expected, label: `케이스 ${index + 1}` }
-      ] });
+      renderStatus();
+      drawer.setResult({ language: 'java', code, cases, results, running: true });
+      await runJavaBatch({ source: code, inputs: cases.map(testCase => testCase.input) }, event => {
+        const index = event.index;
+        const testCase = cases[index];
+        const snapshot = { input: testCase.input, expected: testCase.expected, label: `케이스 ${index + 1}` };
+        if (event.type === 'start') {
+          javaCaseIndex = index + 1;
+          renderStatus();
+          results[index] = { ...snapshot, output: '', verdict: 'running' };
+        } else {
+          const result = event.result;
+          const verdict = result.error ? 'error' : testCase.expected === '' ? 'output'
+            : normalize(result.output) === normalize(testCase.expected) ? 'passed' : 'failed';
+          results[index] = { ...snapshot, ...result, verdict };
+        }
+        drawer.setResult({ language: 'java', code, cases, results, running: true }, false);
+      });
+      drawer.setResult({ language: 'java', code, cases, results, running: false }, false);
     } catch (error) {
-      const result: CaseResult = { verdict: 'error', output: '', input: selected.input, expected: selected.expected,
-        label: `케이스 ${index + 1}`, error: error instanceof Error ? error.message : 'Java 실행 환경을 열지 못했습니다.' };
-      drawer.setResult({ language: 'java', code, cases, results: [result] });
+      for (const result of results) {
+        if (result.verdict !== 'queued' && result.verdict !== 'running') continue;
+        result.verdict = 'error';
+        result.error = error instanceof Error ? error.message : 'Java 실행 환경을 열지 못했습니다.';
+      }
+      drawer.setResult({ language: 'java', code, cases, results, running: false }, false);
     } finally {
       runningJava = false;
+      javaCaseIndex = javaCaseTotal = 0;
       renderStatus();
     }
   });
 
   submitButton.addEventListener('click', () => {
-    if (loading || preparingSubmission || !initialized) return;
+    if (loading || preparingSubmission || !initialized || storageDisconnected) return;
     const draft = drafts.entries.get(currentLanguage);
     if (!draft) return;
     // Capture code and language before asynchronous saves or another language switch.
@@ -538,6 +607,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   });
   window.addEventListener('pagehide', () => { void flushAll(); });
   window.addEventListener('beforeunload', event => {
+    if (reloadingAfterCopy && !drawer.cases.writer?.dirty) return;
     if (allWriters().some(writer => writer.dirty)) {
       void flushAll();
       event.preventDefault();
