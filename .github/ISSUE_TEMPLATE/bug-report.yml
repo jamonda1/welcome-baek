@@ -1,0 +1,22 @@
+name: 버그 신고
+description: Welcome Baek에서 발생한 문제를 알려주세요.
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 방법
+      description: 어느 페이지에서 어떤 동작을 했는지 알려주세요. 백준 문제 페이지라면 문제 번호도 적어주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 예상 동작과 실제 동작
+      description: 어떤 결과를 기대했고 실제로는 어떤 일이 일어났는지 적어주세요. 오류 메시지나 화면 캡처도 첨부할 수 있어요.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 사용 환경
+      description: 확인할 수 있는 범위에서 확장 프로그램 버전, Chrome 버전, 운영체제를 적어주세요.
