@@ -1,0 +1,82 @@
+diff --git a/web/runner/src/lib.rs b/web/runner/src/lib.rs
+--- a/web/runner/src/lib.rs
++++ b/web/runner/src/lib.rs
+@@ -8,6 +8,7 @@ use ristretto_vm::{ClassPath, ClassPathEntry, Compiler, ConfigurationBuilder, Me
+ use serde::Deserialize;
+ use serde_json::json;
+ use std::cell::RefCell;
++use std::collections::BTreeMap;
+ use std::io::{self, Write};
+ use std::path::PathBuf;
+ use std::sync::Arc;
+@@ -45,6 +46,10 @@ struct Request {
+     class_name: String,
+     source: String,
+     #[serde(default)]
++    stdin: String,
++    #[serde(default)]
++    classes: BTreeMap<String, Vec<u8>>,
++    #[serde(default)]
+     language: Language,
+     #[serde(default)]
+     scala_version: Option<String>,
+@@ -66,6 +71,7 @@ enum ShellOperation {
+ #[derive(Debug, Deserialize, PartialEq)]
+ #[serde(rename_all = "lowercase")]
+ enum Action {
++    Execute,
+     Compile,
+     Check,
+     Run,
+@@ -177,25 +183,39 @@ async fn execute(
+         return Err("Use Compile to check Java source".into());
+     }
+     let output_id = Arc::new(AtomicU32::new(id));
+-    emit(&json!({"id": id, "type": "phase", "phase": "compiling"}))?;
+-    let compiler = Compiler::new(configuration(&output_id, &written, paths).build()?).await?;
+-    let classes = compiler
+-        .compile_source_with_options(&request.class_name, &request.source, &["-proc:none", "-g"])
+-        // Format VM errors while the compiler still owns the throwable's GC heap.
+-        .await
+-        .map_err(|error| error.to_string())?;
+-    emit(&json!({"id": id, "type": "compiled", "classes": classes.len()}))?;
+-    // Drop the compiler VM before starting the user's VM to reduce peak memory.
+-    drop(compiler);
+-    if request.action == Action::Run {
++    let classes = if request.action == Action::Execute {
++        if request.classes.is_empty() {
++            return Err("Missing compiled classes".into());
++        }
++        request.classes.clone()
++    } else {
++        emit(&json!({"id": id, "type": "phase", "phase": "compiling"}))?;
++        let compiler = Compiler::new(configuration(&output_id, &written, paths).build()?).await?;
++        let classes = compiler
++            .compile_source_with_options(&request.class_name, &request.source, &["-proc:none", "-g"])
++            .await
++            .map_err(|error| error.to_string())?;
++        emit(&json!({"id": id, "type": "compiled", "classes": classes.len()}))?;
++        let bytecode = classes.into_inner();
++        drop(compiler);
++        bytecode
++    };
++    if request.action == Action::Compile {
++        emit(&json!({"id": id, "type": "bytecode", "classes": classes}))?;
++    }
++    if matches!(request.action, Action::Run | Action::Execute) {
+         emit(&json!({"id": id, "type": "phase", "phase": "running"}))?;
+         let memory = Memory::new("playground");
+-        classes.load_into(&memory).await?;
++        for bytecode in classes.values() {
++            memory.add_class(bytecode).await?;
++        }
+         let config = configuration(&output_id, &written, paths)
+             .main_class(&request.class_name)
+             .class_path(ClassPath::new(vec![ClassPathEntry::Memory(memory)]))
+             .build()?;
+         let vm = VM::new(config).await?;
++        let input = vm.object("java.io.ByteArrayInputStream", "[B", &[request.stdin.as_bytes().to_vec()]).await?;
++        vm.invoke("java.lang.System", "setIn(Ljava/io/InputStream;)V", &[input]).await?;
+         if let Err(error) = vm.invoke_main(&[] as &[&str]).await {
+             return report_vm_error(id, &vm, error).await;
+         }

@@ -4,7 +4,12 @@ import { codeKey } from '../src/storage/storage';
 import type { JavaResult } from '../src/java/protocol';
 
 const { runJava } = vi.hoisted(() => ({ runJava: vi.fn() }));
-vi.mock('../src/java/client', () => ({ javaRunnerAvailable: () => true, runJava }));
+vi.mock('../src/java/client', () => ({ javaRunnerAvailable: () => true,
+  runJavaBatch: async (request: { source: string; inputs: string[] }, emit: (event: unknown) => void) => {
+    emit({ type: 'start', index: 0 });
+    emit({ type: 'result', index: 0, result: await runJava({ source: request.source, input: request.inputs[0] }) });
+  }
+}));
 const ticks = async () => { for (let i = 0; i < 50; i++) await Promise.resolve(); };
 const source = 'public class Main { public static void main(String[] args) {} }';
 

@@ -1,4 +1,3 @@
-"use components";
 export function instantiate(getCoreModule, imports, instantiateCore = WebAssembly.instantiate) {
   
   const emptyFunc = () => {};
@@ -3473,6 +3472,7 @@ function clampGuest(i, min, max) {
   }
   return i;
 }
+
 
 
 
