@@ -20,10 +20,12 @@ describe('problem page integration', () => {
   };
   let resolveCpp!: (data: Record<string, unknown>) => void;
   let failNextWrite = false;
+  let storageDisconnected = false;
   const get = vi.fn((keys: string[] | null) => keys?.includes(codeKey('1000', 'cpp'))
     ? new Promise<Record<string, unknown>>(resolve => { resolveCpp = resolve; })
     : Promise.resolve({ ...data }));
   const set = vi.fn(async (items: Record<string, unknown>) => {
+    if (storageDisconnected) throw new Error('Extension context invalidated.');
     if (failNextWrite) { failNextWrite = false; throw new Error('QUOTA_BYTES quota exceeded'); }
     Object.assign(data, items);
   });
@@ -229,5 +231,51 @@ describe('problem page integration', () => {
     expect(document.querySelector<HTMLButtonElement>('#welcome-baek-submit')!.disabled).toBe(false);
     saveShortcut();
     await ticks();
+  });
+
+  it('preserves the draft and requires a fresh successful copy after the extension disconnects', async () => {
+    const banner = document.querySelector<HTMLElement>('#welcome-baek-recovery')!;
+    const copy = banner.querySelector<HTMLButtonElement>('#welcome-baek-recovery-copy')!;
+    const reload = banner.querySelector<HTMLButtonElement>('#welcome-baek-recovery-reload')!;
+    const writeText = vi.fn<(code: string) => Promise<void>>()
+      .mockRejectedValueOnce(new Error('Clipboard blocked'))
+      .mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      expect(banner.hidden).toBe(true);
+      storageDisconnected = true;
+      view().focus();
+      const original = view().state.doc.toString();
+      view().dispatch({ changes: { from: 0, insert: '// unsaved\n' } });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(banner.hidden).toBe(false);
+      expect(status()).toBe('자동 저장 중단');
+      expect(view().hasFocus).toBe(true);
+      expect(reload.disabled).toBe(true);
+
+      copy.click();
+      await ticks();
+      expect(banner.textContent).toContain('복사하지 못했어요');
+      expect(reload.disabled).toBe(true);
+
+      copy.click();
+      await ticks();
+      expect(writeText).toHaveBeenLastCalledWith('// unsaved\n' + original);
+      expect(banner.textContent).toContain('코드가 복사됐어요');
+      expect(reload.disabled).toBe(false);
+
+      view().dispatch({ changes: { from: 0, insert: '// newer\n' } });
+      expect(reload.disabled).toBe(true);
+      copy.click();
+      await ticks();
+      expect(writeText).toHaveBeenLastCalledWith('// newer\n// unsaved\n' + original);
+      expect(reload.disabled).toBe(false);
+      expect(data[codeKey('1000', 'cpp')]).toMatchObject({ code: original });
+    } finally {
+      Reflect.deleteProperty(navigator, 'clipboard');
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
   });
 });
