@@ -134,9 +134,19 @@ export function createEditor(parent: HTMLElement, options: {
   onSave: () => void;
 }) {
   const themeCompartment = new Compartment();
+  const editingCompartment = new Compartment();
   let theme: EditorTheme = 'github-light';
+  let documentEditable = false;
+  let locked = false;
+  const editingExtensions = () => {
+    const editable = documentEditable && !locked;
+    return [EditorState.readOnly.of(!editable), EditorView.editable.of(editable),
+      EditorView.contentAttributes.of({ 'aria-readonly': String(!editable) })];
+  };
 
-  const makeState = (language: CodeLanguage, code: string, editable: boolean) => EditorState.create({
+  const makeState = (language: CodeLanguage, code: string, editable: boolean) => {
+    documentEditable = editable;
+    return EditorState.create({
     doc: code,
     extensions: [
       basicSetup,
@@ -144,8 +154,7 @@ export function createEditor(parent: HTMLElement, options: {
       themeCompartment.of(getThemeExtension(theme)),
       indentUnit.of('    '),
       EditorState.tabSize.of(4),
-      EditorState.readOnly.of(!editable),
-      EditorView.editable.of(editable),
+      editingCompartment.of(editingExtensions()),
       EditorView.contentAttributes.of({ 'aria-label': '문제 풀이 코드' }),
       EditorView.updateListener.of(update => {
         if (update.docChanged) options.onChange(update.state.doc.toString());
@@ -157,11 +166,12 @@ export function createEditor(parent: HTMLElement, options: {
           view.dispatch(view.state.replaceSelection('    '));
           return true;
         } },
-        { key: 'Shift-Tab', run: indentLess }
+        { key: 'Shift-Tab', run: view => view.state.readOnly || indentLess(view) }
       ]),
       EditorView.lineWrapping
     ]
-  });
+    });
+  };
   // Never expose a template before the storage read has succeeded.
   const view = new EditorView({ state: makeState(defaultLanguage, '', false), parent });
   const saveShortcut = (event: KeyboardEvent) => {
@@ -183,6 +193,12 @@ export function createEditor(parent: HTMLElement, options: {
     setTheme(next: EditorTheme) {
       theme = next;
       view.dispatch({ effects: themeCompartment.reconfigure(getThemeExtension(theme)) });
+    },
+    setLocked(next: boolean) {
+      if (locked === next) return;
+      locked = next;
+      // Reconfigure permissions without replacing the document, caret or Undo history.
+      view.dispatch({ effects: editingCompartment.reconfigure(editingExtensions()) });
     },
     destroy() {
       view.dom.removeEventListener('keydown', saveShortcut, true);
