@@ -7,18 +7,20 @@ const STARTUP_LIMIT = 20_000;
 export function sandboxRunnerAvailable(): boolean {
   return typeof globalThis.chrome?.runtime?.getURL === 'function' && typeof MessageChannel === 'function';
 }
-export function createSandboxClient<Asset extends string, Metrics>(options: {
+export function createSandboxClient<Asset extends string, Metrics, Request extends BatchRequest = BatchRequest>(options: {
   label: string;
   assetDirectory: string;
   assetsToLoad: readonly Asset[];
   sandboxPage: string;
   messageType: string;
   responseLimit: number;
+  keepAssetsInSandbox?: boolean;
 }) {
   const { label, assetDirectory, assetsToLoad, sandboxPage, messageType, responseLimit } = options;
   let assetsPromise: Promise<Record<Asset, ArrayBuffer>> | undefined;
   let framePromise: Promise<HTMLIFrameElement> | undefined;
   let frame: HTMLIFrameElement | undefined;
+  let assetsFrame: HTMLIFrameElement | undefined;
   let busy = false;
   function readAssets(): Promise<Record<Asset, ArrayBuffer>> {
     return assetsPromise ??= (async () => {
@@ -35,7 +37,7 @@ export function createSandboxClient<Asset extends string, Metrics>(options: {
       finally { clearTimeout(timeout); controller.abort(); }
     })();
   }
-  function invalidate() { frame?.remove(); frame = undefined; framePromise = undefined; }
+  function invalidate() { frame?.remove(); frame = undefined; framePromise = undefined; assetsFrame = undefined; }
   function getFrame(): Promise<HTMLIFrameElement> {
     if (frame && !frame.isConnected) invalidate();
     return framePromise ??= new Promise((resolve, reject) => {
@@ -50,7 +52,7 @@ export function createSandboxClient<Asset extends string, Metrics>(options: {
       document.documentElement.append(node);
     });
   }
-  return async function runBatch(request: BatchRequest, onEvent: (event: BatchEvent) => void): Promise<Metrics> {
+  return async function runBatch(request: Request, onEvent: (event: BatchEvent) => void): Promise<Metrics> {
     if (busy) throw new Error(`이미 ${label} 코드를 실행 중입니다.`);
     busy = true;
     try {
@@ -75,6 +77,7 @@ export function createSandboxClient<Asset extends string, Metrics>(options: {
           if (!data || finished) return;
           if (data.type === 'done') {
             if (seen.size !== request.inputs.length) return finish(new Error('일부 테스트 결과를 받지 못했습니다.'));
+            if (options.keepAssetsInSandbox) assetsFrame = sandbox;
             return finish(undefined, data.metrics);
           }
           if (!Number.isInteger(data.index) || data.index < 0 || data.index >= request.inputs.length) return;
@@ -90,7 +93,9 @@ export function createSandboxClient<Asset extends string, Metrics>(options: {
         arm();
         try {
           // Cached buffers must not be detached when sending them to the sandbox.
-          sandbox.contentWindow!.postMessage({ type: messageType, request, assets }, '*', [channel.port2]);
+          sandbox.contentWindow!.postMessage({
+            type: messageType, request, ...(assetsFrame === sandbox ? {} : { assets })
+          }, '*', [channel.port2]);
         } catch { finish(new Error(`${label} 실행 환경에 연결하지 못했습니다.`)); }
       });
     } catch (error) { invalidate(); throw error; }

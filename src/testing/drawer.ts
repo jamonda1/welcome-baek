@@ -277,7 +277,7 @@ export class WorkspaceDrawer {
   private renderResults() {
     if (!this.result) {
       this.resultsBody.replaceChildren(element('p', 'wb-empty', '아직 실행 결과가 없습니다.'),
-        element('p', 'wb-muted', 'Java 또는 Python을 선택하고 테스트 케이스를 실행하세요.'));
+        element('p', 'wb-muted', 'Java, C, C++, Python을 선택하고 테스트 케이스를 실행하세요.'));
       return;
     }
     const result = this.result;

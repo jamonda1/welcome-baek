@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { javaAssets } from '../src/java/protocol';
+import { nativeAssets } from '../src/native/protocol';
 import { pythonAssets } from '../src/python/protocol';
 
 describe('built unpacked extension (run npm run build first)', () => {
@@ -39,6 +40,23 @@ describe('built unpacked extension (run npm run build first)', () => {
       expect(existsSync('dist/python/' + asset)).toBe(true);
     }
     expect(readFileSync('dist/python/pyodide.asm.wasm').subarray(0, 4).toString('hex')).toBe('0061736d');
+  });
+  it('packages C/C++ toolchain files separately from its sandbox script', () => {
+    const manifest = JSON.parse(readFileSync('dist/manifest.json', 'utf8'));
+    expect(manifest.sandbox.pages).toContain('native-sandbox.html');
+    expect(manifest.web_accessible_resources).toContainEqual({
+      resources: ['native-sandbox.html', 'native/*.gz'],
+      matches: ['https://www.acmicpc.net/*', 'https://acmicpc.net/*'],
+    });
+    const html = readFileSync('dist/native-sandbox.html', 'utf8');
+    expect(html).toContain("connect-src 'none'");
+    expect(html).not.toContain("'unsafe-eval'");
+    const script = readFileSync('dist/native-sandbox.js', 'utf8');
+    expect(() => new Script(script)).not.toThrow();
+    expect(Buffer.byteLength(script)).toBeLessThan(1024 * 1024);
+    for (const asset of nativeAssets) {
+      expect(readFileSync('dist/native/' + asset).subarray(0, 2).toString('hex')).toBe('1f8b');
+    }
   });
   it('bundles a classic content script with no top-level module dependencies', () => {
     const code = readFileSync('dist/problem.js', 'utf8');

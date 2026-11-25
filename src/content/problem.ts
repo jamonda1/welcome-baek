@@ -3,6 +3,7 @@ import { createEditor, type EditorTheme } from '../editor/editor';
 import { javaRunnerAvailable, runJavaBatch } from '../java/client';
 import { defaultLanguage, isCodeLanguage, languageOrder, languages, type CodeLanguage } from '../languages/catalog';
 import { templates } from '../languages/templates';
+import { nativeRunnerAvailable, runC, runCpp } from '../native/client';
 import { pythonRunnerAvailable, runPythonBatch } from '../python/client';
 import { isExtensionContextInvalidated, Repository, storageError, type Preferences } from '../storage/storage';
 import { BufferedValue, Drafts } from '../storage/persistence';
@@ -17,6 +18,8 @@ const runners: Partial<Record<CodeLanguage, {
   preparing: string;
 }>> = {
   java: { available: javaRunnerAvailable, run: runJavaBatch, preparing: 'Java 컴파일 중' },
+  c: { available: nativeRunnerAvailable, run: runC, preparing: 'C 컴파일 중' },
+  cpp: { available: nativeRunnerAvailable, run: runCpp, preparing: 'C++ 컴파일 중' },
   python: { available: pythonRunnerAvailable, run: runPythonBatch, preparing: 'Python 준비 중' },
 };
 
@@ -440,7 +443,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
       ? `${language.label} 실행 중… (${runningCaseIndex}/${runningCaseTotal})` : `${runner.preparing}…` : '▷ 코드 실행';
     drawer.runButton.dataset.running = String(running);
     drawer.runButton.setAttribute('aria-busy', String(running));
-    drawer.runButton.title = !canRun ? '현재 로컬 실행은 Java와 Python을 지원합니다'
+    drawer.runButton.title = !canRun ? '현재 로컬 실행은 Java, C, C++, Python을 지원합니다'
       : `등록된 모든 테스트 케이스를 ${language.submission.label}로 실행합니다`;
     submitButton.disabled = loading || !initialized || preparingSubmission || storageDisconnected || !editor.view.state.doc.toString().trim();
     submitButton.title = !editor.view.state.doc.toString().trim()
