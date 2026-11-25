@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifier>wasi-wasm</RuntimeIdentifier>
+    <RuntimeFrameworkVersion>10.0.15</RuntimeFrameworkVersion>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
+    <WasmSingleFileBundle>true</WasmSingleFileBundle>
+    <WasmInitialHeapSize>67108864</WasmInitialHeapSize>
+    <WasiClangVerbose>false</WasiClangVerbose>
+    <WasmNativeDebugSymbols>false</WasmNativeDebugSymbols>
+    <WasmNativeStrip>true</WasmNativeStrip>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <InvariantTimezone>true</InvariantTimezone>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Deterministic>true</Deterministic>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+</Project>

@@ -10,10 +10,7 @@ export const templates: Record<CodeLanguage, string> = {
   c: `#include <stdio.h>
 
 int main(void) {
-    int a, b;
-    if (scanf("%d %d", &a, &b) == 2) {
-        printf("%d\\n", a + b);
-    }
+    puts("Welcome, Baekjoon!");
     return 0;
 }`,
 
@@ -31,11 +28,7 @@ public class Program
 {
     public static void Main()
     {
-        var tokens = Console.In.ReadToEnd().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-        if (tokens.Length >= 2)
-        {
-            Console.WriteLine(int.Parse(tokens[0]) + int.Parse(tokens[1]));
-        }
+        Console.WriteLine("Welcome, Baekjoon!");
     }
 }`,
 
@@ -45,11 +38,5 @@ public class Program
 if __name__ == "__main__":
     main()`,
 
-  javascript: `const fs = require('fs');
-const tokens = fs.readFileSync(0, 'utf8').trim().split(/\\s+/);
-
-if (tokens.length >= 2) {
-    const [a, b] = tokens.map(Number);
-    console.log(a + b);
-}`
+  javascript: `console.log("Welcome, Baekjoon!");`
 };

@@ -3,8 +3,17 @@ import { EditorView } from '@codemirror/view';
 import { codeKey } from '../src/storage/storage';
 import { caseKey, type TestCase } from '../src/testing/cases';
 import type { JavaResult } from '../src/java/protocol';
+import type { BatchEvent, BatchRequest } from '../src/testing/sandbox-client';
 
-const { runJava } = vi.hoisted(() => ({ runJava: vi.fn() }));
+const { runJava, runPythonBatch, runC, runCpp, runJavaScript, runCSharp } = vi.hoisted(() => ({
+  runJava: vi.fn(), runPythonBatch: vi.fn(), runC: vi.fn(), runCpp: vi.fn(), runJavaScript: vi.fn(), runCSharp: vi.fn()
+}));
+vi.mock('../src/csharp/client', () => ({ csharpRunnerAvailable: () => true, runCSharp }));
+vi.mock('../src/javascript/client', () => ({
+  javascriptRunnerAvailable: () => true, runJavaScript
+}));
+vi.mock('../src/native/client', () => ({ nativeRunnerAvailable: () => true, runC, runCpp }));
+vi.mock('../src/python/client', () => ({ pythonRunnerAvailable: () => true, runPythonBatch }));
 vi.mock('../src/java/client', () => ({ javaRunnerAvailable: () => true,
   runJavaBatch: async (request: { source: string; inputs: string[] }, emit: (event: unknown) => void) => {
     for (const [index, input] of request.inputs.entries()) {
@@ -102,6 +111,52 @@ it('runs every snapshotted case sequentially, continues after errors and keeps t
   results.click();
   expect(document.querySelectorAll('.wb-result-list > details')).toHaveLength(4);
   expect(runJava).toHaveBeenCalledTimes(4);
+
+  const pythonSource = 'print(input())';
+  data[codeKey('1000', 'python')] = { code: pythonSource };
+  const echoCases = async (request: BatchRequest, emit: (event: BatchEvent) => void) => {
+    for (const [index, output] of request.inputs.entries()) {
+      emit({ type: 'start', index });
+      emit({ type: 'result', index, result: { output } });
+    }
+  };
+  runPythonBatch.mockImplementation(echoCases);
+  language.value = 'python';
+  language.dispatchEvent(new Event('change'));
+  await ticks();
+  expect(button.disabled).toBe(false);
+  expect(view.state.doc.toString()).toBe(pythonSource);
+  button.click();
+  await ticks();
+  expect(runJava).toHaveBeenCalledTimes(4);
+  expect(runPythonBatch).toHaveBeenCalledOnce();
+  expect(runPythonBatch.mock.calls[0][0]).toEqual({
+    source: pythonSource,
+    inputs: ['1 2', '2 3', 'changed during run', '4 5']
+  });
+  expect(verdicts()).toEqual(['failed', 'failed', 'failed', 'output']);
+  expect(button.disabled).toBe(false);
+  for (const [selection, runner, source] of [
+    ['c', runC, 'int main() { return 0; }'],
+    ['cpp', runCpp, 'int main() { return 0; }'],
+    ['javascript', runJavaScript, 'console.log(1);'],
+    ['csharp', runCSharp, 'Console.WriteLine(1);'],
+  ] as const) {
+    data[codeKey('1000', selection)] = { code: source };
+    runner.mockImplementation(echoCases);
+    language.value = selection;
+    language.dispatchEvent(new Event('change'));
+    await ticks();
+    expect(button.disabled).toBe(false);
+    if (selection === 'javascript') expect(button.title).toContain('JavaScript로 실행');
+    button.click();
+    await ticks();
+    expect(runner).toHaveBeenCalledOnce();
+    expect(runner.mock.calls[0][0]).toEqual({
+      source, inputs: ['1 2', '2 3', 'changed during run', '4 5']
+    });
+    expect(verdicts()).toEqual(['failed', 'failed', 'failed', 'output']);
+  }
   window.dispatchEvent(new Event('pagehide'));
   await ticks();
 });
