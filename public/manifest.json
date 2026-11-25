@@ -19,14 +19,18 @@
         }
     },
     "sandbox": {
-        "pages": ["java-sandbox.html"]
+        "pages": ["java-sandbox.html", "python-sandbox.html"]
     },
     "content_security_policy": {
-        "sandbox": "sandbox allow-scripts; default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src blob:; connect-src 'none'"
+        "sandbox": "sandbox allow-scripts; default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src blob:; connect-src 'none'"
     },
     "web_accessible_resources": [
         {
             "resources": ["java-sandbox.html", "java/*.wasm", "java/jdk-11.zip"],
+            "matches": ["https://www.acmicpc.net/*", "https://acmicpc.net/*"]
+        },
+        {
+            "resources": ["python-sandbox.html", "python/pyodide.asm.wasm", "python/python_stdlib.zip", "python/pyodide-lock.json"],
             "matches": ["https://www.acmicpc.net/*", "https://acmicpc.net/*"]
         }
     ],

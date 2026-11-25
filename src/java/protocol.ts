@@ -1,16 +1,14 @@
+import type { BatchEvent, BatchRequest, RunOutput } from '../testing/sandbox-client';
+
 export interface JavaRequest {
   source: string;
   input: string;
 }
 
-export interface JavaResult {
-  output: string;
-  error?: string;
-}
-
+export type JavaResult = RunOutput;
 export type JavaWorkerMessage = { phase: 'running' } | JavaResult;
-export interface JavaBatchRequest { source: string; inputs: string[] }
-export type JavaBatchEvent = { type: 'start'; index: number } | { type: 'result'; index: number; result: JavaResult };
+export type JavaBatchRequest = BatchRequest;
+export type JavaBatchEvent = BatchEvent;
 export interface JavaBatchMetrics {
   preparationMs: number; compileMs: number; caseMs: number[]; totalMs: number; cached: boolean;
 }

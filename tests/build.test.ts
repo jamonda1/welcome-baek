@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { javaAssets } from '../src/java/protocol';
+import { pythonAssets } from '../src/python/protocol';
 
 describe('built unpacked extension (run npm run build first)', () => {
   it('ships MV3 storage permission and every manifest asset', () => {
@@ -17,7 +18,7 @@ describe('built unpacked extension (run npm run build first)', () => {
   });
   it('includes the Java 11 assets in a network-disabled sandbox', () => {
     const manifest = JSON.parse(readFileSync('dist/manifest.json', 'utf8'));
-    expect(manifest.sandbox.pages).toEqual(['java-sandbox.html']);
+    expect(manifest.sandbox.pages).toContain('java-sandbox.html');
     expect(manifest.content_security_policy.sandbox).toContain("connect-src 'none'");
     expect(manifest.content_security_policy.sandbox).not.toContain('allow-same-origin');
     expect(readFileSync('dist/java-sandbox.html', 'utf8')).toContain('src="java-sandbox.js"');
@@ -26,6 +27,18 @@ describe('built unpacked extension (run npm run build first)', () => {
       const header = readFileSync(`dist/java/${asset}`).subarray(0, 4);
       expect(header.toString('hex')).toBe(asset.endsWith('.wasm') ? '0061736d' : '504b0304');
     }
+  });
+  it('includes the Python runtime files in a network-disabled sandbox', () => {
+    const manifest = JSON.parse(readFileSync('dist/manifest.json', 'utf8'));
+    expect(manifest.sandbox.pages).toContain('python-sandbox.html');
+    expect(readFileSync('dist/python-sandbox.html', 'utf8')).toContain("connect-src 'none'");
+    expect(() => new Script(readFileSync('dist/python-sandbox.js', 'utf8'))).not.toThrow();
+    const resources = manifest.web_accessible_resources.flatMap((entry: { resources: string[] }) => entry.resources);
+    for (const asset of pythonAssets) {
+      expect(resources).toContain('python/' + asset);
+      expect(existsSync('dist/python/' + asset)).toBe(true);
+    }
+    expect(readFileSync('dist/python/pyodide.asm.wasm').subarray(0, 4).toString('hex')).toBe('0061736d');
   });
   it('bundles a classic content script with no top-level module dependencies', () => {
     const code = readFileSync('dist/problem.js', 'utf8');

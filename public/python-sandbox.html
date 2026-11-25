@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <!-- Pyodide initializes Emscripten functions with eval inside the sandboxed Worker. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src blob:; connect-src 'none'">
+  <title>Welcome Baek Python</title>
+  <script defer src="python-sandbox.js"></script>
+</head>
+</html>

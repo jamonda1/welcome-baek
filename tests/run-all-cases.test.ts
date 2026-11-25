@@ -3,8 +3,10 @@ import { EditorView } from '@codemirror/view';
 import { codeKey } from '../src/storage/storage';
 import { caseKey, type TestCase } from '../src/testing/cases';
 import type { JavaResult } from '../src/java/protocol';
+import type { BatchEvent, BatchRequest } from '../src/testing/sandbox-client';
 
-const { runJava } = vi.hoisted(() => ({ runJava: vi.fn() }));
+const { runJava, runPythonBatch } = vi.hoisted(() => ({ runJava: vi.fn(), runPythonBatch: vi.fn() }));
+vi.mock('../src/python/client', () => ({ pythonRunnerAvailable: () => true, runPythonBatch }));
 vi.mock('../src/java/client', () => ({ javaRunnerAvailable: () => true,
   runJavaBatch: async (request: { source: string; inputs: string[] }, emit: (event: unknown) => void) => {
     for (const [index, input] of request.inputs.entries()) {
@@ -102,6 +104,30 @@ it('runs every snapshotted case sequentially, continues after errors and keeps t
   results.click();
   expect(document.querySelectorAll('.wb-result-list > details')).toHaveLength(4);
   expect(runJava).toHaveBeenCalledTimes(4);
+
+  const pythonSource = 'print(input())';
+  data[codeKey('1000', 'python')] = { code: pythonSource };
+  runPythonBatch.mockImplementation(async (request: BatchRequest, emit: (event: BatchEvent) => void) => {
+    for (const [index, output] of request.inputs.entries()) {
+      emit({ type: 'start', index });
+      emit({ type: 'result', index, result: { output } });
+    }
+  });
+  language.value = 'python';
+  language.dispatchEvent(new Event('change'));
+  await ticks();
+  expect(button.disabled).toBe(false);
+  expect(view.state.doc.toString()).toBe(pythonSource);
+  button.click();
+  await ticks();
+  expect(runJava).toHaveBeenCalledTimes(4);
+  expect(runPythonBatch).toHaveBeenCalledOnce();
+  expect(runPythonBatch.mock.calls[0][0]).toEqual({
+    source: pythonSource,
+    inputs: ['1 2', '2 3', 'changed during run', '4 5']
+  });
+  expect(verdicts()).toEqual(['failed', 'failed', 'failed', 'output']);
+  expect(button.disabled).toBe(false);
   window.dispatchEvent(new Event('pagehide'));
   await ticks();
 });

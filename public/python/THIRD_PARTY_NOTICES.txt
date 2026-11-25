@@ -1,0 +1,14 @@
+Welcome Baek packages the Pyodide 0.28.3 JavaScript loader, WebAssembly
+runtime, package index, and Python standard library from the pyodide npm package.
+
+Pyodide is distributed under the Mozilla Public License 2.0.
+License: LICENSE-PYODIDE.txt
+Source: https://github.com/pyodide/pyodide/tree/0.28.3
+
+Pyodide includes CPython 3.13.2 and its standard library.
+License: LICENSE-CPYTHON.txt
+Source: https://github.com/python/cpython/tree/v3.13.2
+
+The Pyodide WebAssembly build uses Emscripten 4.0.9 runtime code.
+License: LICENSE-EMSCRIPTEN.txt
+Source: https://github.com/emscripten-core/emscripten/tree/4.0.9
