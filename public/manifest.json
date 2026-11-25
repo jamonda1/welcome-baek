@@ -19,7 +19,7 @@
         }
     },
     "sandbox": {
-        "pages": ["java-sandbox.html", "python-sandbox.html", "native-sandbox.html"]
+        "pages": ["java-sandbox.html", "python-sandbox.html", "native-sandbox.html", "javascript-sandbox.html", "csharp-sandbox.html"]
     },
     "content_security_policy": {
         "sandbox": "sandbox allow-scripts; default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; worker-src blob:; connect-src 'none'"
@@ -35,6 +35,14 @@
         },
         {
             "resources": ["native-sandbox.html", "native/*.gz"],
+            "matches": ["https://www.acmicpc.net/*", "https://acmicpc.net/*"]
+        },
+        {
+            "resources": ["javascript-sandbox.html", "javascript/quickjs.wasm", "javascript/node-compat.qbc"],
+            "matches": ["https://www.acmicpc.net/*", "https://acmicpc.net/*"]
+        },
+        {
+            "resources": ["csharp-sandbox.html", "csharp/runner.zip"],
             "matches": ["https://www.acmicpc.net/*", "https://acmicpc.net/*"]
         }
     ],

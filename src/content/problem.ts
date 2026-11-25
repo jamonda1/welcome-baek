@@ -1,6 +1,8 @@
 
+import { csharpRunnerAvailable, runCSharp } from '../csharp/client';
 import { createEditor, type EditorTheme } from '../editor/editor';
 import { javaRunnerAvailable, runJavaBatch } from '../java/client';
+import { javascriptRunnerAvailable, runJavaScript } from '../javascript/client';
 import { defaultLanguage, isCodeLanguage, languageOrder, languages, type CodeLanguage } from '../languages/catalog';
 import { templates } from '../languages/templates';
 import { nativeRunnerAvailable, runC, runCpp } from '../native/client';
@@ -20,6 +22,8 @@ const runners: Partial<Record<CodeLanguage, {
   java: { available: javaRunnerAvailable, run: runJavaBatch, preparing: 'Java 컴파일 중' },
   c: { available: nativeRunnerAvailable, run: runC, preparing: 'C 컴파일 중' },
   cpp: { available: nativeRunnerAvailable, run: runCpp, preparing: 'C++ 컴파일 중' },
+  csharp: { available: csharpRunnerAvailable, run: runCSharp, preparing: 'C# 컴파일 중' },
+  javascript: { available: javascriptRunnerAvailable, run: runJavaScript, preparing: 'JavaScript 컴파일 중' },
   python: { available: pythonRunnerAvailable, run: runPythonBatch, preparing: 'Python 준비 중' },
 };
 
@@ -443,8 +447,9 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
       ? `${language.label} 실행 중… (${runningCaseIndex}/${runningCaseTotal})` : `${runner.preparing}…` : '▷ 코드 실행';
     drawer.runButton.dataset.running = String(running);
     drawer.runButton.setAttribute('aria-busy', String(running));
-    drawer.runButton.title = !canRun ? '현재 로컬 실행은 Java, C, C++, Python을 지원합니다'
-      : `등록된 모든 테스트 케이스를 ${language.submission.label}로 실행합니다`;
+    const runtimeLabel = currentLanguage === 'javascript' ? language.label : language.submission.label;
+    drawer.runButton.title = !canRun ? '코드와 테스트 케이스를 입력하면 실행할 수 있습니다'
+      : `등록된 모든 테스트 케이스를 ${runtimeLabel}로 실행합니다`;
     submitButton.disabled = loading || !initialized || preparingSubmission || storageDisconnected || !editor.view.state.doc.toString().trim();
     submitButton.title = !editor.view.state.doc.toString().trim()
       ? '코드를 작성하면 제출 페이지로 이동할 수 있습니다' : '현재 코드를 새 탭의 백준 제출 화면으로 가져오기';

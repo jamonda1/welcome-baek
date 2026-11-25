@@ -46,8 +46,10 @@
     "@codemirror/view": "^6.43.15",
     "@lezer/highlight": "^1.2.5",
     "browsercc": "0.1.1",
+    "buffer": "6.0.3",
     "codemirror": "^6.0.2",
     "fflate": "^0.8.3",
-    "pyodide": "0.28.3"
+    "pyodide": "0.28.3",
+    "quickjs-wasi": "3.7.0"
   }
 }

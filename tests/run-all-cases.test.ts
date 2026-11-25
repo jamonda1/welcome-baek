@@ -5,8 +5,12 @@ import { caseKey, type TestCase } from '../src/testing/cases';
 import type { JavaResult } from '../src/java/protocol';
 import type { BatchEvent, BatchRequest } from '../src/testing/sandbox-client';
 
-const { runJava, runPythonBatch, runC, runCpp } = vi.hoisted(() => ({
-  runJava: vi.fn(), runPythonBatch: vi.fn(), runC: vi.fn(), runCpp: vi.fn()
+const { runJava, runPythonBatch, runC, runCpp, runJavaScript, runCSharp } = vi.hoisted(() => ({
+  runJava: vi.fn(), runPythonBatch: vi.fn(), runC: vi.fn(), runCpp: vi.fn(), runJavaScript: vi.fn(), runCSharp: vi.fn()
+}));
+vi.mock('../src/csharp/client', () => ({ csharpRunnerAvailable: () => true, runCSharp }));
+vi.mock('../src/javascript/client', () => ({
+  javascriptRunnerAvailable: () => true, runJavaScript
 }));
 vi.mock('../src/native/client', () => ({ nativeRunnerAvailable: () => true, runC, runCpp }));
 vi.mock('../src/python/client', () => ({ pythonRunnerAvailable: () => true, runPythonBatch }));
@@ -132,14 +136,19 @@ it('runs every snapshotted case sequentially, continues after errors and keeps t
   });
   expect(verdicts()).toEqual(['failed', 'failed', 'failed', 'output']);
   expect(button.disabled).toBe(false);
-  for (const [selection, runner] of [['c', runC], ['cpp', runCpp]] as const) {
-    const source = 'int main() { return 0; }';
+  for (const [selection, runner, source] of [
+    ['c', runC, 'int main() { return 0; }'],
+    ['cpp', runCpp, 'int main() { return 0; }'],
+    ['javascript', runJavaScript, 'console.log(1);'],
+    ['csharp', runCSharp, 'Console.WriteLine(1);'],
+  ] as const) {
     data[codeKey('1000', selection)] = { code: source };
     runner.mockImplementation(echoCases);
     language.value = selection;
     language.dispatchEvent(new Event('change'));
     await ticks();
     expect(button.disabled).toBe(false);
+    if (selection === 'javascript') expect(button.title).toContain('JavaScript로 실행');
     button.click();
     await ticks();
     expect(runner).toHaveBeenCalledOnce();

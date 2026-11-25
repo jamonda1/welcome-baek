@@ -2,7 +2,9 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { describe, expect, it } from 'vitest';
+import { csharpAsset } from '../src/csharp/protocol';
 import { javaAssets } from '../src/java/protocol';
+import { javascriptAssets } from '../src/javascript/protocol';
 import { nativeAssets } from '../src/native/protocol';
 import { pythonAssets } from '../src/python/protocol';
 
@@ -57,6 +59,33 @@ describe('built unpacked extension (run npm run build first)', () => {
     for (const asset of nativeAssets) {
       expect(readFileSync('dist/native/' + asset).subarray(0, 2).toString('hex')).toBe('1f8b');
     }
+  });
+  it('packages the JavaScript runtime and compatibility bytecode in an isolated sandbox', () => {
+    const manifest = JSON.parse(readFileSync('dist/manifest.json', 'utf8'));
+    expect(manifest.sandbox.pages).toContain('javascript-sandbox.html');
+    const resources = manifest.web_accessible_resources.flatMap((entry: { resources: string[] }) => entry.resources);
+    for (const asset of javascriptAssets) {
+      expect(resources).toContain('javascript/' + asset);
+      expect(existsSync('dist/javascript/' + asset)).toBe(true);
+    }
+    const html = readFileSync('dist/javascript-sandbox.html', 'utf8');
+    expect(html).toContain("connect-src 'none'");
+    expect(html).not.toContain("'unsafe-eval'");
+    expect(() => new Script(readFileSync('dist/javascript-sandbox.js', 'utf8'))).not.toThrow();
+    expect(readFileSync('dist/javascript/quickjs.wasm').subarray(0, 4).toString('hex')).toBe('0061736d');
+  });
+  it('packages the C# compiler and execution runtime in an isolated sandbox', () => {
+    const manifest = JSON.parse(readFileSync('dist/manifest.json', 'utf8'));
+    expect(manifest.sandbox.pages).toContain('csharp-sandbox.html');
+    expect(manifest.web_accessible_resources).toContainEqual({
+      resources: ['csharp-sandbox.html', 'csharp/' + csharpAsset],
+      matches: ['https://www.acmicpc.net/*', 'https://acmicpc.net/*'],
+    });
+    const html = readFileSync('dist/csharp-sandbox.html', 'utf8');
+    expect(html).toContain("connect-src 'none'");
+    expect(html).not.toContain("'unsafe-eval'");
+    expect(() => new Script(readFileSync('dist/csharp-sandbox.js', 'utf8'))).not.toThrow();
+    expect(readFileSync('dist/csharp/' + csharpAsset).subarray(0, 4).toString('hex')).toBe('504b0304');
   });
   it('bundles a classic content script with no top-level module dependencies', () => {
     const code = readFileSync('dist/problem.js', 'utf8');
