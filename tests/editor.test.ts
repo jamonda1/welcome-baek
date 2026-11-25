@@ -30,9 +30,10 @@ describe('CodeMirror regression and shortcuts', () => {
     editor.view.dispatch({ changes: { from: 0, insert: 'new ' } });
     expect(onChange).toHaveBeenCalledWith('new restored code');
   });
-  it.each(languageOrder)('keeps %s syntax and four-space indentation', language => {
+  it.each(languageOrder)('loads the %s starter with the greeting, syntax and four-space indentation', language => {
     const { editor } = setup();
     editor.showDocument(language, templates[language]);
+    expect(editor.view.state.doc.toString()).toContain('Welcome, Baekjoon!');
     expect(syntaxTree(editor.view.state).length).toBeGreaterThan(0);
     expect(editor.view.state.tabSize).toBe(4);
     editor.view.focus();

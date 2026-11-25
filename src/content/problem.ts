@@ -1,13 +1,31 @@
 
+import { csharpRunnerAvailable, runCSharp } from '../csharp/client';
 import { createEditor, type EditorTheme } from '../editor/editor';
 import { javaRunnerAvailable, runJavaBatch } from '../java/client';
+import { javascriptRunnerAvailable, runJavaScript } from '../javascript/client';
 import { defaultLanguage, isCodeLanguage, languageOrder, languages, type CodeLanguage } from '../languages/catalog';
 import { templates } from '../languages/templates';
+import { nativeRunnerAvailable, runC, runCpp } from '../native/client';
+import { pythonRunnerAvailable, runPythonBatch } from '../python/client';
 import { isExtensionContextInvalidated, Repository, storageError, type Preferences } from '../storage/storage';
 import { BufferedValue, Drafts } from '../storage/persistence';
 import { openSubmission, type SubmissionSnapshot } from '../submission/transfer';
 import { WorkspaceDrawer, type CaseResult } from '../testing/drawer';
+import type { BatchEvent, BatchRequest } from '../testing/sandbox-client';
 import { createRecoveryBanner } from './recovery-banner';
+
+const runners: Partial<Record<CodeLanguage, {
+  available: () => boolean;
+  run: (request: BatchRequest, emit: (event: BatchEvent) => void) => Promise<unknown>;
+  preparing: string;
+}>> = {
+  java: { available: javaRunnerAvailable, run: runJavaBatch, preparing: 'Java 컴파일 중' },
+  c: { available: nativeRunnerAvailable, run: runC, preparing: 'C 컴파일 중' },
+  cpp: { available: nativeRunnerAvailable, run: runCpp, preparing: 'C++ 컴파일 중' },
+  csharp: { available: csharpRunnerAvailable, run: runCSharp, preparing: 'C# 컴파일 중' },
+  javascript: { available: javascriptRunnerAvailable, run: runJavaScript, preparing: 'JavaScript 컴파일 중' },
+  python: { available: pythonRunnerAvailable, run: runPythonBatch, preparing: 'Python 준비 중' },
+};
 
 const main = document.querySelector<HTMLElement>(
   '.container.content'
@@ -27,9 +45,9 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   let previousStatus = '';
   let compactSaved = false;
   let statusTimer: ReturnType<typeof setTimeout> | undefined;
-  let runningJava = false;
-  let javaCaseIndex = 0;
-  let javaCaseTotal = 0;
+  let running = false;
+  let runningCaseIndex = 0;
+  let runningCaseTotal = 0;
   let preparingSubmission = false;
   let storageDisconnected = false;
   let reloadingAfterCopy = false;
@@ -153,7 +171,6 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   executionStatus.id = 'welcome-baek-execution-status';
   executionStatus.setAttribute('role', 'status');
   executionStatus.setAttribute('aria-live', 'polite');
-  executionStatus.textContent = 'Java 실행 중 · 편집 잠금';
   executionStatus.hidden = true;
   editorContainer.append(executionStatus);
 
@@ -416,29 +433,32 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
       : saving ? '저장 중…' : pending ? '변경 사항 있음'
       : nextStatus === 'saved' ? compactSaved ? '✓ 저장됨' : '✓ 저장되었습니다' : '자동 저장 사용 중';
     retryButton.hidden = storageDisconnected || (!loadError && !drawer.cases.error && !failed);
-    languageSelect.disabled = !initialized || runningJava || storageDisconnected;
+    languageSelect.disabled = !initialized || running || storageDisconnected;
     themeSelect.disabled = !initialized;
     swapButton.disabled = !initialized;
     divider.tabIndex = initialized ? 0 : -1;
     divider.setAttribute('aria-disabled', String(!initialized));
-    const canRunJava = currentLanguage === 'java' && javaRunnerAvailable();
-    drawer.runButton.disabled = !canRunJava || loading || runningJava || storageDisconnected ||
+    const runner = runners[currentLanguage];
+    const canRun = runner?.available();
+    const language = languages[currentLanguage];
+    drawer.runButton.disabled = !canRun || loading || running || storageDisconnected ||
       !drawer.cases.writer?.value.length || !editor.view.state.doc.toString().trim();
-    drawer.runButton.textContent = runningJava ? javaCaseIndex
-      ? `Java 실행 중… (${javaCaseIndex}/${javaCaseTotal})` : 'Java 컴파일 중…' : '▷ 코드 실행';
-    drawer.runButton.dataset.running = String(runningJava);
-    drawer.runButton.setAttribute('aria-busy', String(runningJava));
-    drawer.runButton.title = !canRunJava ? '현재 로컬 실행은 Java만 지원합니다'
-      : '등록된 모든 테스트 케이스를 Java 11로 실행합니다';
+    drawer.runButton.textContent = running && runner ? runningCaseIndex
+      ? `${language.label} 실행 중… (${runningCaseIndex}/${runningCaseTotal})` : `${runner.preparing}…` : '▷ 코드 실행';
+    drawer.runButton.dataset.running = String(running);
+    drawer.runButton.setAttribute('aria-busy', String(running));
+    const runtimeLabel = currentLanguage === 'javascript' ? language.label : language.submission.label;
+    drawer.runButton.title = !canRun ? '코드와 테스트 케이스를 입력하면 실행할 수 있습니다'
+      : `등록된 모든 테스트 케이스를 ${runtimeLabel}로 실행합니다`;
     submitButton.disabled = loading || !initialized || preparingSubmission || storageDisconnected || !editor.view.state.doc.toString().trim();
     submitButton.title = !editor.view.state.doc.toString().trim()
       ? '코드를 작성하면 제출 페이지로 이동할 수 있습니다' : '현재 코드를 새 탭의 백준 제출 화면으로 가져오기';
-    editorContainer.setAttribute('aria-busy', String(loading || runningJava));
-    editorContainer.dataset.running = String(runningJava);
-    executionStatus.hidden = !runningJava;
-    if (runningJava) executionStatus.textContent = javaCaseIndex
-      ? `Java 실행 중 (${javaCaseIndex}/${javaCaseTotal}) · 편집 잠금` : 'Java 컴파일 중 · 편집 잠금';
-    editor.setLocked(runningJava);
+    editorContainer.setAttribute('aria-busy', String(loading || running));
+    editorContainer.dataset.running = String(running);
+    executionStatus.hidden = !running;
+    if (running && runner) executionStatus.textContent = runningCaseIndex
+      ? `${language.label} 실행 중 (${runningCaseIndex}/${runningCaseTotal}) · 편집 잠금` : `${runner.preparing} · 편집 잠금`;
+    editor.setLocked(running);
   }
 
   async function showLanguage(language: CodeLanguage) {
@@ -499,7 +519,7 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
   }
 
   languageSelect.addEventListener('change', () => {
-    if (runningJava || storageDisconnected) {
+    if (running || storageDisconnected) {
       languageSelect.value = currentLanguage;
       return;
     }
@@ -525,7 +545,9 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
     else if (loadError) void showLanguage(currentLanguage);
   });
   drawer.runButton.addEventListener('click', async () => {
-    if (drawer.runButton.disabled) return;
+    const language = currentLanguage;
+    const runner = runners[language];
+    if (!runner || drawer.runButton.disabled) return;
     const cases = structuredClone(drawer.cases.writer!.value);
     if (!cases.length) return;
     const code = editor.view.state.doc.toString();
@@ -534,18 +556,18 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
       output: '', verdict: 'queued'
     }));
     const normalize = (value: string) => value.replace(/\r\n/g, '\n').trimEnd();
-    runningJava = true;
-    javaCaseIndex = 0;
-    javaCaseTotal = cases.length;
+    running = true;
+    runningCaseIndex = 0;
+    runningCaseTotal = cases.length;
     try {
       renderStatus();
-      drawer.setResult({ language: 'java', code, cases, results, running: true });
-      await runJavaBatch({ source: code, inputs: cases.map(testCase => testCase.input) }, event => {
+      drawer.setResult({ language, code, cases, results, running: true });
+      await runner.run({ source: code, inputs: cases.map(testCase => testCase.input) }, event => {
         const index = event.index;
         const testCase = cases[index];
         const snapshot = { input: testCase.input, expected: testCase.expected, label: `케이스 ${index + 1}` };
         if (event.type === 'start') {
-          javaCaseIndex = index + 1;
+          runningCaseIndex = index + 1;
           renderStatus();
           results[index] = { ...snapshot, output: '', verdict: 'running' };
         } else {
@@ -554,19 +576,19 @@ if (problemId && main && !document.querySelector('#welcome-baek-layout')) {
             : normalize(result.output) === normalize(testCase.expected) ? 'passed' : 'failed';
           results[index] = { ...snapshot, ...result, verdict };
         }
-        drawer.setResult({ language: 'java', code, cases, results, running: true }, false);
+        drawer.setResult({ language, code, cases, results, running: true }, false);
       });
-      drawer.setResult({ language: 'java', code, cases, results, running: false }, false);
+      drawer.setResult({ language, code, cases, results, running: false }, false);
     } catch (error) {
       for (const result of results) {
         if (result.verdict !== 'queued' && result.verdict !== 'running') continue;
         result.verdict = 'error';
-        result.error = error instanceof Error ? error.message : 'Java 실행 환경을 열지 못했습니다.';
+        result.error = error instanceof Error ? error.message : `${languages[language].label} 실행 환경을 열지 못했습니다.`;
       }
-      drawer.setResult({ language: 'java', code, cases, results, running: false }, false);
+      drawer.setResult({ language, code, cases, results, running: false }, false);
     } finally {
-      runningJava = false;
-      javaCaseIndex = javaCaseTotal = 0;
+      running = false;
+      runningCaseIndex = runningCaseTotal = 0;
       renderStatus();
     }
   });
